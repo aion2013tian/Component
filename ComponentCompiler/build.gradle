@@ -14,13 +14,14 @@ targetCompatibility = "7"
 
 dependencies {
     implementation 'com.google.auto.service:auto-service:1.0-rc6'
-    implementation 'com.squareup:javapoet:1.11.1'
-    implementation 'org.apache.commons:commons-lang3:3.9'
+    implementation 'com.squareup:javapoet:1.12.1'
+    implementation 'org.apache.commons:commons-lang3:3.10'
     implementation 'org.apache.commons:commons-collections4:4.4'
-    if (Boolean.parseBoolean(rootProject.ext.isDependMavenOnline)) {
-        compile libs.component_annotation
+    implementation 'com.google.code.gson:gson:2.8.6'
+    if (rootProject.ext.isDependMavenOnline) {
+        implementation libs.component_annotation
     }else {
-        compile project(':ComponentApi')
+        implementation project(':ComponentApi')
     }
 }
 

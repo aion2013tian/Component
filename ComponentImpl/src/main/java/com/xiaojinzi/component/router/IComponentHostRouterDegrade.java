@@ -3,6 +3,7 @@ package com.xiaojinzi.component.router;
 import android.support.annotation.NonNull;
 
 import com.xiaojinzi.component.bean.RouterDegradeBean;
+import com.xiaojinzi.component.support.IHost;
 
 import java.util.List;
 
@@ -11,22 +12,13 @@ import java.util.List;
  * <p>
  * time   : 2018/07/26
  *
- * @author : xiaojinzi 30212
+ * @author : xiaojinzi
  */
-public interface IComponentHostRouterDegrade {
-
-    /**
-     * 获取当前的 host
-     *
-     * @return
-     */
-    @NonNull
-    String getHost();
+public interface IComponentHostRouterDegrade extends IHost {
 
     /**
      * 获取这个模块的降级处理
      *
-     * @return
      * @throws Exception
      */
     @NonNull

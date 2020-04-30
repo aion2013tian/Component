@@ -10,7 +10,12 @@ android {
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         javaCompileOptions {
             annotationProcessorOptions {
-                arguments = ["HOST": "component1"]
+                // arguments = ["HOST": "component1"]
+                arguments = [
+                        "HOST"           : "component1",
+                        "RouterDocFolder": project.property("component_router_doc_folder"),
+                        "RouterDocEnable": String.valueOf(project.property("componnet_router_doc_enable"))
+                ]
             }
         }
     }
@@ -27,7 +32,7 @@ android {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     api project(':ModuleBase')
-    if (Boolean.parseBoolean(rootProject.ext.isDependMavenOnline)) {
+    if (rootProject.ext.isDependMavenOnline) {
         annotationProcessor libs.component_compiler
     } else {
         annotationProcessor project(':ComponentCompiler')

@@ -11,14 +11,13 @@ import java.util.List;
  * <p>
  * time   : 2018/07/26
  *
- * @author : xiaojinzi 30212
+ * @author : xiaojinzi
  */
 public interface IComponentRouterDegrade {
 
     /**
      * 获取所有的降级处理, 数据需要排过序的
      *
-     * @return
      * @throws Exception
      */
     @NonNull

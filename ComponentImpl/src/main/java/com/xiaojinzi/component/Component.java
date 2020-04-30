@@ -3,9 +3,12 @@ package com.xiaojinzi.component;
 import android.app.Application;
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.annotation.AnyThread;
+import android.support.annotation.MainThread;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
+import com.xiaojinzi.component.impl.application.ModuleManager;
 import com.xiaojinzi.component.support.Inject;
 import com.xiaojinzi.component.support.LogUtil;
 import com.xiaojinzi.component.support.Utils;
@@ -15,7 +18,7 @@ import com.xiaojinzi.component.support.Utils;
  * 组件化的配置类,可以拿到 Application
  * time   : 2018/08/09
  *
- * @author : xiaojinzi 30212
+ * @author : xiaojinzi
  */
 public class Component {
 
@@ -30,21 +33,10 @@ public class Component {
     private static boolean isDebug = false;
 
     /**
-     * 全局的 Application
+     * 配置对象
      */
-    private static Application application = null;
+    private static Config mConfig = null;
 
-    /**
-     * 默认的 scheme
-     */
-    private static String defaultScheme = "router";
-
-    /**
-     * 初始化优化的开关.
-     * 默认是 false, 初始化的时候采用反射的形式
-     * 当是 true 的时候, 初始化的时候,
-     */
-    private static boolean isInitOptimize = false;
 
     private Component() {
     }
@@ -52,58 +44,74 @@ public class Component {
     /**
      * 初始化
      *
-     * @param application App 的 Application
-     * @param isDebug     是否是debug模式
+     * @see Config 初始化的配置对象
      */
-    public static void init(@NonNull Application application, boolean isDebug) {
-        init(application, isDebug, null);
-    }
+    @MainThread
+    public static void init(boolean isDebug, @NonNull Config config) {
 
-    /**
-     * 打开初始化优化的开关
-     */
-    public static void openInitOptimize() {
-        if (!isInit) {
-            throw new RuntimeException("you must init Component first");
-        }
-        isInitOptimize = true;
-    }
-
-    /**
-     * 初始化
-     *
-     * @param application App 的 Application
-     * @param isDebug     是否是debug模式
-     */
-    public static void init(@NonNull Application application, boolean isDebug, @Nullable String defaultScheme) {
+        // 做必要的检查
         if (isInit) {
-            throw new RuntimeException("Component is already init");
+            throw new RuntimeException("you have init Component already!");
         }
-        if (application == null) {
-            throw new NullPointerException("the Application is null");
-        }
-        Component.application = application;
+        Utils.checkMainThread();
+        Utils.checkNullPointer(config, "config");
+
         Component.isDebug = isDebug;
-        if (defaultScheme != null && !defaultScheme.isEmpty()) {
-            Component.defaultScheme = defaultScheme;
-        }
+        mConfig = config;
         // 注册
-        application.registerActivityLifecycleCallbacks(new ComponentLifecycleCallback());
+        mConfig.getApplication().registerActivityLifecycleCallbacks(new ComponentLifecycleCallback());
+        if (mConfig.isOptimizeInit() && mConfig.isAutoRegisterModule()) {
+            ModuleManager.getInstance().autoRegister();
+        }
         isInit = true;
+        if (isDebug) {
+            printComponent();
+        }
+
+    }
+
+    /**
+     * 打印宣传内容和 logo
+     */
+    private static void printComponent() {
+        StringBuffer sb = new StringBuffer();
+        sb.append(" \n");
+
+        // 打印logo C
+
+        sb.append("\n");
+        sb.append("             *********\n");
+        sb.append("          ****        ****\n");
+        sb.append("       ****              ****\n");
+        sb.append("     ****\n");
+        sb.append("    ****\n");
+        sb.append("    ****\n");
+        sb.append("    ****\n");
+        sb.append("     ****\n");
+        sb.append("       ****              ****\n");
+        sb.append("          ****        ****\n");
+        sb.append("             *********\n");
+
+        sb.append("感谢您选择 Component 组件化框架. \n有任何问题欢迎提 issue 或者扫描 github 上的二维码进入群聊@群主\n")
+                .append("Github 地址：https://github.com/xiaojinzi123/Component")
+                .append("\n文档地址：https://github.com/xiaojinzi123/Component/wiki")
+                .append("\n ");
+
+        LogUtil.logw(sb.toString());
+    }
+
+    @NonNull
+    @AnyThread
+    public static Config getConfig() {
+        return mConfig;
     }
 
     /**
      * 返回是否是 debug 状态
      */
+    @AnyThread
     public static boolean isDebug() {
-        return isDebug;
-    }
-
-    /**
-     * 返回是否开启初始化优化
-     */
-    public static boolean isInitOptimize() {
-        return isInitOptimize;
+        return Component.isDebug;
     }
 
     /**
@@ -112,58 +120,69 @@ public class Component {
      * @return Application
      */
     @NonNull
+    @AnyThread
     public static Application getApplication() {
-        if (application == null) {
-            throw new NullPointerException("the Application is null,do you call Component.init(Application application,boolean isDebug)?");
+        checkInit();
+        return mConfig.getApplication();
+    }
+
+    private static void checkInit() {
+        if (mConfig == null) {
+            throw new RuntimeException("you must init Component first!");
         }
-        return application;
     }
 
-    /**
-     * 获取默认的 scheme
-     *
-     * @return
-     */
-    public static String getDefaultScheme() {
-        return defaultScheme;
-    }
-
-    /**
-     * 找到实现类,执行注入
-     *
-     * @param target 目标界面
-     */
+    @MainThread
     public static void inject(@NonNull Object target) {
-        injectFromBundle(target, null);
+        inject(target, null, true, true);
+    }
+
+    @MainThread
+    public static void injectAttrValueFromIntent(@NonNull Object target, @Nullable Intent intent) {
+        injectAttrValueFromBundle(target, intent == null ? null : intent.getExtras());
+    }
+
+    @MainThread
+    public static void injectAttrValueFromBundle(@NonNull Object target, @Nullable Bundle bundle) {
+        inject(target, bundle, true, false);
+    }
+
+    @MainThread
+    public static void injectService(@NonNull Object target) {
+        inject(target, null, false, true);
     }
 
     /**
-     * 找到实现类,执行注入
+     * 注入功能
      *
-     * @param target 目标界面
+     * @param target              目标, 可能是任意的类
+     * @param bundle              属性注入的 Bundle 数据提供者
+     * @param isAutoWireAttrValue 是否注入属性值
+     * @param isAutoWireService   是否注入 Service
      */
-    public static void injectFromIntent(@NonNull Object target, @Nullable Intent intent) {
-        injectFromBundle(target, intent == null ? null : intent.getExtras());
-    }
-
-    /**
-     * 找到实现类,执行注入
-     *
-     * @param target 目标界面
-     */
-    public static void injectFromBundle(@NonNull Object target, @Nullable Bundle bundle) {
+    @MainThread
+    private static void inject(@NonNull Object target, @Nullable Bundle bundle,
+                               boolean isAutoWireAttrValue,
+                               boolean isAutoWireService) {
+        Utils.checkMainThread();
         Utils.checkNullPointer(target, "target");
         String injectClassName = target.getClass().getName() + ComponentConstants.INJECT_SUFFIX;
         try {
             Class<?> targetInjectClass = Class.forName(injectClassName);
             Inject inject = (Inject) targetInjectClass.newInstance();
-            if (bundle == null) {
-                inject.inject(target);
-            } else {
-                inject.inject(target, bundle);
+            if (isAutoWireService) {
+                inject.injectService(target);
+            }
+            if (isAutoWireAttrValue) {
+                if (bundle == null) {
+                    inject.injectAttrValue(target);
+                } else {
+                    Utils.checkNullPointer(bundle, "bundle");
+                    inject.injectAttrValue(target, bundle);
+                }
             }
         } catch (Exception ignore) {
-            LogUtil.log(target.getClass().getName(), "field inject fail");
+            LogUtil.log("class '" + target.getClass().getName() + "' inject fail");
         }
     }
 

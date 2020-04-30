@@ -40,7 +40,7 @@ import javax.tools.Diagnostic;
  * 处理拦截器的注解驱动器,目的是为了处理 {@link GlobalInterceptorAnno} 和 {@link InterceptorAnno}
  * time   : 2018/12/26
  *
- * @author : xiaojinzi 30212
+ * @author : xiaojinzi
  */
 @AutoService(Processor.class)
 @SupportedOptions("HOST")
@@ -53,7 +53,6 @@ public class InterceptorProcessor extends BaseHostProcessor {
     private TypeElement interceptorUtilTypeElement;
     private TypeElement interceptorBeanTypeElement;
     private TypeElement conditionCacheTypeElement;
-    private ClassName nonNullClassName;
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnvironment) {
@@ -62,8 +61,6 @@ public class InterceptorProcessor extends BaseHostProcessor {
         interceptorUtilTypeElement = mElements.getTypeElement(com.xiaojinzi.component.ComponentConstants.INTERCEPTOR_UTIL_CLASS_NAME);
         interceptorBeanTypeElement = mElements.getTypeElement(com.xiaojinzi.component.ComponentConstants.INTERCEPTOR_BEAN_CLASS_NAME);
         conditionCacheTypeElement = mElements.getTypeElement(com.xiaojinzi.component.ComponentConstants.CONDITIONCACHE_CLASS_NAME);
-        final TypeElement nonNullTypeElement = mElements.getTypeElement(com.xiaojinzi.component.ComponentConstants.ANDROID_ANNOTATION_NONNULL);
-        nonNullClassName = ClassName.get(nonNullTypeElement);
     }
 
     @Override
@@ -122,6 +119,7 @@ public class InterceptorProcessor extends BaseHostProcessor {
                 }
                 continue;
             }
+            // 同一个模块名称不可以相同
             if (mNormalInterceptElementMap.containsKey(anno.value())) {
                 throw new ProcessException("the interceptor's name '" + anno.value() + "' is exist");
             }
@@ -141,6 +139,8 @@ public class InterceptorProcessor extends BaseHostProcessor {
         MethodSpec globalInterceptorListMethod = generateGlobalInterceptorListMethod();
         MethodSpec normalInterceptorListMethod = generateNormalInterceptorInitMapMethod();
         TypeSpec typeSpec = TypeSpec.classBuilder(cn)
+                .addAnnotation(mClassNameKeep)
+                .addAnnotation(mClassNameComponentGeneratedAnno)
                 .addModifiers(Modifier.PUBLIC)
                 .addModifiers(Modifier.FINAL)
                 .superclass(superClass)
@@ -166,7 +166,7 @@ public class InterceptorProcessor extends BaseHostProcessor {
         final MethodSpec.Builder globalInterceptorListMethodSpecBuilder = MethodSpec.methodBuilder("globalInterceptorList")
                 .returns(returnType)
                 .addAnnotation(Override.class)
-                .addAnnotation(nonNullClassName)
+                .addAnnotation(mClassNameNonNull)
                 .addModifiers(Modifier.PUBLIC);
 
         if (mGlobalInterceptElementList.isEmpty()) {

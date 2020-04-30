@@ -3,6 +3,8 @@ package com.xiaojinzi.component;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.TypeName;
 
+import java.util.Map;
+
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.Messager;
@@ -15,7 +17,7 @@ import javax.lang.model.util.Types;
  * 基础的注解驱动器,帮助获取一些常用的信息
  * time   : 2018/12/26
  *
- * @author : xiaojinzi 30212
+ * @author : xiaojinzi
  */
 public abstract class BaseProcessor extends AbstractProcessor {
 
@@ -29,23 +31,37 @@ public abstract class BaseProcessor extends AbstractProcessor {
             "    versionName \"1.0\"\n\n" +
             "    javaCompileOptions {\n" +
             "        annotationProcessorOptions {\n" +
-            "            arguments = [HOST: \"component2\"]\n" +
+            "            arguments = [HOST: \"user\"]\n" +
             "        }\n" +
             "    }\n" +
             "}\n  \n");
+
+    protected String routerDocFolder = null;
+    protected boolean routerDocEnable;
 
     protected Filer mFiler;
     protected Messager mMessager;
     protected Types mTypes;
     protected Elements mElements;
 
+    protected TypeElement mTypeElementComponentGeneratedAnno;
     protected TypeElement mTypeElementString;
+    protected TypeElement mTypeElementInteger;
     protected TypeElement mTypeElementList;
     protected TypeElement mTypeElementArrayList;
+    protected TypeElement mTypeElementSparseArray;
+    protected TypeElement mTypeElementHashMap;
+    protected TypeElement mTypeElementHashSet;
 
+    protected ClassName mClassNameComponentGeneratedAnno;
     protected ClassName mClassNameString;
     protected ClassName mClassNameList;
     protected ClassName mClassNameArrayList;
+    protected ClassName mClassNameSparseArray;
+    protected ClassName mClassNameHashMap;
+    protected ClassName mClassNameHashSet;
+    protected ClassName mClassNameKeep;
+    protected ClassName mClassNameNonNull;
 
     protected TypeName mTypeNameString;
 
@@ -53,21 +69,51 @@ public abstract class BaseProcessor extends AbstractProcessor {
     public synchronized void init(ProcessingEnvironment processingEnvironment) {
         super.init(processingEnvironment);
 
+        Map<String, String> options = processingEnv.getOptions();
+        if (options != null) {
+            routerDocFolder = options.get("RouterDocFolder");
+            routerDocEnable = Boolean.parseBoolean(options.get("RouterDocEnable"));
+        }
+
         mFiler = processingEnv.getFiler();
         mMessager = processingEnv.getMessager();
         mTypes = processingEnv.getTypeUtils();
         mElements = processingEnv.getElementUtils();
 
-        mTypeElementString = mElements.getTypeElement(com.xiaojinzi.component.ComponentConstants.JAVA_STRING);
-        mTypeElementList = mElements.getTypeElement(com.xiaojinzi.component.ComponentConstants.JAVA_LIST);
+        mTypeElementComponentGeneratedAnno = mElements.getTypeElement(ComponentConstants.COMPONENT_GENERATED_ANNO_CLASS_NAME);
+        mClassNameComponentGeneratedAnno = ClassName.get(mTypeElementComponentGeneratedAnno);
+
+        mTypeElementString = mElements.getTypeElement(ComponentConstants.JAVA_STRING);
+        mTypeElementInteger = mElements.getTypeElement(ComponentConstants.JAVA_INTEGER);
+        mTypeElementList = mElements.getTypeElement(ComponentConstants.JAVA_LIST);
         mTypeElementArrayList = mElements.getTypeElement(ComponentConstants.JAVA_ARRAYLIST);
+        mTypeElementSparseArray = mElements.getTypeElement(ComponentConstants.ANDROID_SPARSEARRAY);
+        mTypeElementHashMap = mElements.getTypeElement(ComponentConstants.JAVA_HASHMAP);
+        mTypeElementHashSet = mElements.getTypeElement(ComponentConstants.JAVA_HASHSET);
 
         mClassNameString = ClassName.get(mTypeElementString);
         mClassNameList = ClassName.get(mTypeElementList);
         mClassNameArrayList = ClassName.get(mTypeElementArrayList);
+        mClassNameSparseArray = ClassName.get(mTypeElementSparseArray);
+        mClassNameHashMap = ClassName.get(mTypeElementHashMap);
+        mClassNameHashSet = ClassName.get(mTypeElementHashSet);
 
         mTypeNameString = TypeName.get(mTypeElementString.asType());
 
+        // androidx 和 非 androidx 的两个注解
+        mClassNameKeep = ClassName.get(mElements.getTypeElement(ComponentConstants.ANDROID_ANNOTATION_KEEP));
+        mClassNameNonNull = ClassName.get(mElements.getTypeElement(ComponentConstants.ANDROID_ANNOTATION_NONNULL));
+
+        if (mClassNameKeep == null || mClassNameNonNull == null) {
+            throw new ProcessException("Your configuration is wrong. " +
+                    "If you use androidx, see https://github.com/xiaojinzi123/Component/wiki/%E4%BE%9D%E8%B5%96%E5%92%8C%E9%85%8D%E7%BD%AE-AndroidX " +
+                    "\n else see https://github.com/xiaojinzi123/Component/wiki/%E4%BE%9D%E8%B5%96%E5%92%8C%E9%85%8D%E7%BD%AE");
+        }
+
+    }
+
+    protected boolean isRouterDocEnable(){
+        return routerDocEnable && (routerDocFolder != null && !routerDocFolder.isEmpty());
     }
 
 }

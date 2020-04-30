@@ -1,5 +1,8 @@
 apply plugin: 'com.android.application'
 apply plugin: 'com.xiaojinzi.component.plugin'
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-android-extensions'
+apply plugin: 'kotlin-kapt'
 
 android {
     compileSdkVersion versions.android_compile_sdk
@@ -13,13 +16,25 @@ android {
         javaCompileOptions {
             annotationProcessorOptions {
                 // 配置业务模块的模块名称
-                arguments = ["HOST": "app"]
+                // arguments = ["HOST": "app"]
+                arguments = [
+                        "HOST"           : "app",
+                        "RouterDocFolder": project.property("component_router_doc_folder"),
+                        "RouterDocEnable": String.valueOf(project.property("componnet_router_doc_enable"))
+                ]
             }
         }
     }
     buildTypes {
         release {
-            minifyEnabled false
+            debuggable = true
+            jniDebuggable = true
+            renderscriptDebuggable = true
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            minifyEnabled = false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
@@ -43,16 +58,19 @@ android {
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
 
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+
     api project(':ModuleBase')
     api project(':Module1')
     api project(':Module2')
     api project(':ModuleHelp')
     api project(':ModuleUser')
 
-    if (Boolean.parseBoolean(rootProject.ext.isDependMavenOnline)) {
-        annotationProcessor libs.component_compiler
+    if (rootProject.ext.isDependMavenOnline) {
+        kapt libs.component_compiler
     } else {
-        annotationProcessor project(':ComponentCompiler')
+        kapt project(':ComponentCompiler')
     }
-
+    // 内存检测的
+    // debugImplementation 'com.squareup.leakcanary:leakcanary-android:2.0-beta-3'
 }

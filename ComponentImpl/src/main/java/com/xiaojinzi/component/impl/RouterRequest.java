@@ -4,9 +4,9 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Parcelable;
+import android.support.annotation.MainThread;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
@@ -14,9 +14,12 @@ import android.text.TextUtils;
 import android.util.SparseArray;
 
 import com.xiaojinzi.component.Component;
-import com.xiaojinzi.component.anno.support.CheckClassName;
+import com.xiaojinzi.component.ComponentActivityStack;
+import com.xiaojinzi.component.anno.support.CheckClassNameAnno;
+import com.xiaojinzi.component.bean.ActivityResult;
 import com.xiaojinzi.component.support.Action;
 import com.xiaojinzi.component.support.Consumer;
+import com.xiaojinzi.component.support.ParameterSupport;
 import com.xiaojinzi.component.support.Utils;
 
 import java.io.Serializable;
@@ -36,10 +39,12 @@ import java.util.Set;
  * <p>
  * time   : 2018/11/29
  *
- * @author xiaojinzi 30212
+ * @author xiaojinzi
  */
-@CheckClassName
+@CheckClassNameAnno
 public class RouterRequest {
+
+    public static final String KEY_SYNC_URI = "_componentSyncUri";
 
     @Nullable
     public final Context context;
@@ -59,6 +64,15 @@ public class RouterRequest {
      */
     @Nullable
     public final Integer requestCode;
+
+    /**
+     * 框架是否帮助用户跳转拿 {@link ActivityResult}
+     * 有 requestCode 只能说明用户使用了某一个 requestCode,
+     * 会调用 {@link Activity#startActivityForResult(Intent, int)}.
+     * 但是不代表需要框架去帮你获取到 {@link ActivityResult}.
+     * 所以这个值就是标记是否需要框架帮助您去获取 {@link ActivityResult}
+     */
+    public final boolean isForResult;
 
     /**
      * 跳转的时候 options 参数
@@ -84,17 +98,90 @@ public class RouterRequest {
     @Nullable
     public final Consumer<Intent> intentConsumer;
 
+    /**
+     * 这个 {@link Action} 是在路由开始的时候调用的.
+     * 和 {@link Activity#startActivity(Intent)} 不是连着执行的.
+     * 中间 post 到主线程的操作
+     */
     @Nullable
-    public final Action beforJumpAction;
+    public final Action beforAction;
 
+    /**
+     * 这个 {@link Action} 是在 {@link Activity#startActivity(Intent)} 之前调用的.
+     * 和 {@link Activity#startActivity(Intent)} 是连着执行的.
+     */
     @Nullable
-    public final Action afterJumpAction;
+    public final Action beforStartAction;
 
+    /**
+     * 这个 {@link Action} 是在 {@link Activity#startActivity(Intent)} 之后调用的.
+     * 和 {@link Activity#startActivity(Intent)} 是连着执行的.
+     */
+    @Nullable
+    public final Action afterStartAction;
+
+    /**
+     * 这个 {@link Action} 是在结束之后调用的.
+     * 和 {@link Activity#startActivity(Intent)} 不是连着执行的.
+     * 是在 {@link RouterInterceptor.Callback#onSuccess(RouterResult)}
+     * 方法中 post 到主线程完成的
+     */
+    @Nullable
+    public final Action afterAction;
+
+    /**
+     * 这个 {@link Action} 是在结束之后调用的.
+     * 和 {@link Activity#startActivity(Intent)} 不是连着执行的.
+     * 是在 {@link RouterInterceptor.Callback#onError(Throwable)}
+     * 方法中 post 到主线程完成的
+     */
     @Nullable
     public final Action afterErrorAction;
 
+    /**
+     * 这个 {@link Action} 是在结束之后调用的.
+     * 和 {@link Activity#startActivity(Intent)} 不是连着执行的.
+     * 是在 {@link RouterInterceptor.Callback#onSuccess(RouterResult)} 或者
+     * {@link RouterInterceptor.Callback#onError(Throwable)}
+     * 方法中 post 到主线程完成的
+     */
     @Nullable
     public final Action afterEventAction;
+
+    private RouterRequest(@NonNull Builder builder) {
+        this.uri = builder.buildURI();
+        context = builder.context;
+        fragment = builder.fragment;
+        requestCode = builder.requestCode;
+        isForResult = builder.isForResult;
+        options = builder.options;
+        // 这两个集合是不可以更改的
+        intentCategories = Collections.unmodifiableList(builder.intentCategories);
+        intentFlags = Collections.unmodifiableList(builder.intentFlags);
+        if (builder.bundle != null) {
+            this.bundle.putAll(builder.bundle);
+        }
+        intentConsumer = builder.intentConsumer;
+        beforAction = builder.beforAction;
+        beforStartAction = builder.beforStartAction;
+        afterStartAction = builder.afterStartAction;
+        afterAction = builder.afterAction;
+        afterErrorAction = builder.afterErrorAction;
+        afterEventAction = builder.afterEventAction;
+    }
+
+    /**
+     * 同步 Query 到 Bundle 中
+     */
+    public void syncUriToBundle() {
+        // 如果 URI 没有变化就不同步了
+        if (bundle.getInt(KEY_SYNC_URI) == uri.hashCode()) {
+            return;
+        }
+        ParameterSupport.syncUriToBundle(uri, bundle);
+        // 更新新的 hashCode
+        bundle.putInt(KEY_SYNC_URI, uri.hashCode());
+    }
 
     /**
      * 从 {@link Fragment} 和 {@link Context} 中获取上下文
@@ -105,10 +192,12 @@ public class RouterRequest {
      * 1. {@link android.app.Application}
      * 2. {@link Activity}
      * <p>
-     * 如果返回的是 {@link Activity} 的 {@link Context}, 当 {@link Activity} 销毁了就会返回 null
+     * 如果返回的是 {@link Activity} 的 {@link Context},
+     * 当 {@link Activity} 销毁了就会返回 null
      * 另外就是返回 {@link android.app.Application}
      *
-     * @return {@link Context}, 可能为 null
+     * @return {@link Context}, 可能为 null, null 就只有一种情况就是界面销毁了.
+     * 构建 {@link RouterRequest} 的时候已经保证了
      */
     @Nullable
     public final Context getRawContext() {
@@ -124,7 +213,7 @@ public class RouterRequest {
             return rawContext;
         } else {
             // 如果是 Activity 并且已经销毁了返回 null
-            if (isActivityDestoryed(rawAct)) {
+            if (Utils.isActivityDestoryed(rawAct)) {
                 return null;
             } else {
                 return rawContext;
@@ -146,7 +235,7 @@ public class RouterRequest {
         if (realActivity == null) {
             return null;
         }
-        if (isActivityDestoryed(realActivity)) {
+        if (Utils.isActivityDestoryed(realActivity)) {
             return null;
         }
         return realActivity;
@@ -160,27 +249,32 @@ public class RouterRequest {
     @Nullable
     public final Activity getRawActivity() {
         Activity rawActivity = getActivity();
-        if (rawActivity == null && fragment != null) {
-            rawActivity = fragment.getActivity();
+        if (rawActivity == null) {
+            if (fragment != null) {
+                rawActivity = fragment.getActivity();
+            }
         }
-        if (isActivityDestoryed(rawActivity)) {
+        if (rawActivity == null) {
+            return null;
+        }
+        if (Utils.isActivityDestoryed(rawActivity)) {
             return null;
         }
         return rawActivity;
     }
 
     /**
-     * Activity 是否被销毁了
-     *
-     * @param activity
-     * @return
+     * 首先调用 {@link #getRawActivity()} 尝试获取此次用户传入的 Context 中是否有关联的 Activity
+     * 如果为空, 则尝试获取运行中的所有 Activity 中顶层的那个
      */
-    private boolean isActivityDestoryed(@NonNull Activity activity) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
-            return activity.isFinishing() || activity.isDestroyed();
-        } else {
-            return activity.isFinishing();
+    @Nullable
+    public final Activity getRawOrTopActivity() {
+        Activity result = getRawActivity();
+        if (result == null) {
+            // 如果不是为空返回的, 那么必定不是销毁的
+            result = ComponentActivityStack.getInstance().getTopAliveActivity();
         }
+        return result;
     }
 
     /**
@@ -209,37 +303,20 @@ public class RouterRequest {
 
         builder.bundle = bundle;
         builder.requestCode = requestCode;
+        builder.isForResult = isForResult;
         builder.options = options;
         // 这里需要新创建一个是因为不可修改的集合不可以给别人
         builder.intentCategories = new ArrayList<>(intentCategories);
         builder.intentFlags = new ArrayList<>(intentFlags);
 
         builder.intentConsumer = intentConsumer;
-        builder.beforJumpAction = beforJumpAction;
-        builder.afterJumpAction = afterJumpAction;
+        builder.beforAction = beforAction;
+        builder.beforStartAction = beforStartAction;
+        builder.afterStartAction = afterStartAction;
+        builder.afterAction = afterAction;
         builder.afterErrorAction = afterErrorAction;
         builder.afterEventAction = afterEventAction;
         return builder;
-    }
-
-    private RouterRequest(@NonNull Builder builder) {
-        Uri result = builder.buildURI();
-        this.uri = result;
-        context = builder.context;
-        fragment = builder.fragment;
-        requestCode = builder.requestCode;
-        options = builder.options;
-        // 这两个集合是不可以更改的
-        intentCategories = Collections.unmodifiableList(builder.intentCategories);
-        intentFlags = Collections.unmodifiableList(builder.intentFlags);
-        if (builder.bundle != null) {
-            this.bundle.putAll(builder.bundle);
-        }
-        intentConsumer = builder.intentConsumer;
-        beforJumpAction = builder.beforJumpAction;
-        afterJumpAction = builder.afterJumpAction;
-        afterErrorAction = builder.afterErrorAction;
-        afterEventAction = builder.afterEventAction;
     }
 
     /**
@@ -248,15 +325,6 @@ public class RouterRequest {
      * @author xiaojinzi
      */
     public static class Builder extends URIBuilder {
-
-        @Nullable
-        protected Context context;
-
-        @Nullable
-        protected Fragment fragment;
-
-        @Nullable
-        protected Integer requestCode;
 
         @Nullable
         protected Bundle options;
@@ -277,19 +345,48 @@ public class RouterRequest {
         protected Bundle bundle = new Bundle();
 
         @Nullable
+        protected Context context;
+
+        @Nullable
+        protected Fragment fragment;
+
+        @Nullable
+        protected Integer requestCode;
+
+        /**
+         * 是否是跳转拿 {@link ActivityResult} 的
+         */
+        protected boolean isForResult;
+
+        @Nullable
         protected Consumer<Intent> intentConsumer;
 
         /**
-         * 跳转前的 Callback
+         * 路由开始之前
          */
         @Nullable
-        protected Action beforJumpAction;
+        protected Action beforAction;
+
+        /**
+         * 执行 {@link Activity#startActivity(Intent)} 之前
+         */
+        @Nullable
+        protected Action beforStartAction;
+
+        /**
+         * 执行 {@link Activity#startActivity(Intent)} 之后
+         */
+        @Nullable
+        protected Action afterStartAction;
 
         /**
          * 跳转成功之后的 Callback
+         * 此时的跳转成功仅代表目标界面启动成功, 不代表跳转拿数据的回调被回调了
+         * 假如你是跳转拿数据的, 当你跳转到 A 界面, 此回调就会回调了,
+         * 当你拿到 Intent 的回调了, 和此回调已经没关系了
          */
         @Nullable
-        protected Action afterJumpAction;
+        protected Action afterAction;
 
         /**
          * 跳转失败之后的 Callback
@@ -313,6 +410,41 @@ public class RouterRequest {
             return this;
         }
 
+        public Builder beforAction(@Nullable @MainThread Action action) {
+            this.beforAction = action;
+            return this;
+        }
+
+        public Builder beforStartAction(@Nullable @MainThread Action action) {
+            this.beforStartAction = action;
+            return this;
+        }
+
+        public Builder afterStartAction(@Nullable @MainThread Action action) {
+            this.afterStartAction = action;
+            return this;
+        }
+
+        public Builder afterAction(@Nullable @MainThread Action action) {
+            this.afterAction = action;
+            return this;
+        }
+
+        public Builder afterErrorAction(@Nullable @MainThread Action action) {
+            this.afterErrorAction = action;
+            return this;
+        }
+
+        public Builder afterEventAction(@Nullable @MainThread Action action) {
+            this.afterEventAction = action;
+            return this;
+        }
+
+        public Builder requestCode(@Nullable Integer requestCode) {
+            this.requestCode = requestCode;
+            return this;
+        }
+
         /**
          * 当不是自定义跳转的时候, Intent 由框架生成,所以可以回调这个接口
          * 当自定义跳转,这个回调不会回调的,这是需要注意的点
@@ -323,9 +455,8 @@ public class RouterRequest {
          * @param intentConsumer Intent 是框架自动构建完成的,里面有跳转需要的所有参数和数据,这里就是给用户一个
          *                       更改的机会,最好别更改内部的参数等的信息,这里提供出来其实主要是可以让你调用Intent
          *                       的 {@link Intent#addFlags(int)} 等方法,并不是给你修改内部的 bundle 的
-         * @return
          */
-        public Builder intentConsumer(@Nullable Consumer<Intent> intentConsumer) {
+        public Builder intentConsumer(@Nullable @MainThread Consumer<Intent> intentConsumer) {
             this.intentConsumer = intentConsumer;
             return this;
         }
@@ -344,36 +475,8 @@ public class RouterRequest {
             return this;
         }
 
-        public Builder beforJumpAction(@Nullable Action action) {
-            this.beforJumpAction = action;
-            return this;
-        }
-
-        public Builder afterJumpAction(@Nullable Action action) {
-            this.afterJumpAction = action;
-            return this;
-        }
-
-        public Builder afterErrorAction(@Nullable Action action) {
-            this.afterErrorAction = action;
-            return this;
-        }
-
-        public Builder afterEventAction(@Nullable Action action) {
-            this.afterEventAction = action;
-            return this;
-        }
-
-        public Builder requestCode(@Nullable Integer requestCode) {
-            this.requestCode = requestCode;
-            return this;
-        }
-
         /**
          * 用于 API >= 16 的时候,调用 {@link Activity#startActivity(Intent, Bundle)}
-         *
-         * @param options
-         * @return
          */
         public Builder options(@Nullable Bundle options) {
             this.options = options;
@@ -382,37 +485,48 @@ public class RouterRequest {
 
         @Override
         public Builder url(@NonNull String url) {
-            return (Builder) super.url(url);
+            super.url(url);
+            return this;
         }
 
         @Override
         public Builder scheme(@NonNull String scheme) {
-            return (Builder) super.scheme(scheme);
+            super.scheme(scheme);
+            return this;
         }
 
         @Override
         public Builder hostAndPath(@NonNull String hostAndPath) {
-            return (Builder) super.hostAndPath(hostAndPath);
+            super.hostAndPath(hostAndPath);
+            return this;
+        }
+
+        @Override
+        public Builder userInfo(@NonNull String userInfo) {
+            super.userInfo(userInfo);
+            return this;
         }
 
         @Override
         public Builder host(@NonNull String host) {
-            return (Builder) super.host(host);
+            super.host(host);
+            return this;
         }
 
         @Override
-        public Builder path(@Nullable String path) {
-            return (Builder) super.path(path);
-        }
-
-        public Builder putBundle(@NonNull String key, @Nullable Bundle bundle) {
-            this.bundle.putBundle(key, bundle);
+        public Builder path(@NonNull String path) {
+            super.path(path);
             return this;
         }
 
         public Builder putAll(@NonNull Bundle bundle) {
             Utils.checkNullPointer(bundle, "bundle");
             this.bundle.putAll(bundle);
+            return this;
+        }
+
+        public Builder putBundle(@NonNull String key, @Nullable Bundle bundle) {
+            this.bundle.putBundle(key, bundle);
             return this;
         }
 
@@ -557,38 +671,45 @@ public class RouterRequest {
         }
 
         @Override
-        public Builder query(@NonNull String queryName, @Nullable String queryValue) {
-            return (Builder) super.query(queryName, queryValue);
+        public Builder query(@NonNull String queryName, @NonNull String queryValue) {
+            super.query(queryName, queryValue);
+            return this;
         }
 
         @Override
         public Builder query(@NonNull String queryName, boolean queryValue) {
-            return (Builder) super.query(queryName, queryValue);
+            super.query(queryName, queryValue);
+            return this;
         }
 
         @Override
         public Builder query(@NonNull String queryName, byte queryValue) {
-            return (Builder) super.query(queryName, queryValue);
+            super.query(queryName, queryValue);
+            return this;
         }
 
         @Override
         public Builder query(@NonNull String queryName, int queryValue) {
-            return (Builder) super.query(queryName, queryValue);
+            super.query(queryName, queryValue);
+            return this;
         }
 
         @Override
         public Builder query(@NonNull String queryName, float queryValue) {
-            return (Builder) super.query(queryName, queryValue);
+            super.query(queryName, queryValue);
+            return this;
         }
 
         @Override
         public Builder query(@NonNull String queryName, long queryValue) {
-            return (Builder) super.query(queryName, queryValue);
+            super.query(queryName, queryValue);
+            return this;
         }
 
         @Override
         public Builder query(@NonNull String queryName, double queryValue) {
-            return (Builder) super.query(queryName, queryValue);
+            super.query(queryName, queryValue);
+            return this;
         }
 
         /**
@@ -615,6 +736,9 @@ public class RouterRequest {
         @Nullable
         protected String scheme;
 
+        @Nullable
+        protected String userInfo;
+
         @NonNull
         protected String host;
 
@@ -625,6 +749,7 @@ public class RouterRequest {
         protected Map<String, String> queryMap = new HashMap<>();
 
         public URIBuilder url(@NonNull String url) {
+            Utils.checkStringNullPointer(url, "url");
             this.url = url;
             return this;
         }
@@ -638,8 +763,7 @@ public class RouterRequest {
         /**
          * xxx/xxx
          *
-         * @param hostAndPath
-         * @return
+         * @param hostAndPath xxx/xxx
          */
         public URIBuilder hostAndPath(@NonNull String hostAndPath) {
             Utils.checkNullPointer(hostAndPath, "hostAndPath");
@@ -648,8 +772,14 @@ public class RouterRequest {
                 host(hostAndPath.substring(0, index));
                 path(hostAndPath.substring(index + 1));
             } else {
-                Utils.throwException(new IllegalArgumentException(hostAndPath + " is invalid"));
+                Utils.debugThrowException(new IllegalArgumentException(hostAndPath + " is invalid"));
             }
+            return this;
+        }
+
+        public URIBuilder userInfo(@NonNull String userInfo) {
+            Utils.checkStringNullPointer(userInfo, "userInfo");
+            this.userInfo = userInfo;
             return this;
         }
 
@@ -659,16 +789,15 @@ public class RouterRequest {
             return this;
         }
 
-        public URIBuilder path(@Nullable String path) {
+        public URIBuilder path(@NonNull String path) {
+            Utils.checkStringNullPointer(path, "path");
             this.path = path;
             return this;
         }
 
-        public URIBuilder query(@NonNull String queryName, @Nullable String queryValue) {
+        public URIBuilder query(@NonNull String queryName, @NonNull String queryValue) {
             Utils.checkStringNullPointer(queryName, "queryName");
-            if (queryValue == null) {
-                queryValue = "";
-            }
+            Utils.checkStringNullPointer(queryValue, "queryValue");
             queryMap.put(queryName, queryValue);
             return this;
         }
@@ -699,8 +828,6 @@ public class RouterRequest {
 
         /**
          * 构建一个 {@link Uri},如果构建失败会抛出异常
-         *
-         * @return
          */
         @NonNull
         public Uri buildURI() {
@@ -708,16 +835,25 @@ public class RouterRequest {
             Uri result = null;
             if (builder.url == null) {
                 Uri.Builder uriBuilder = new Uri.Builder();
-                uriBuilder
-                        .scheme(TextUtils.isEmpty(builder.scheme) ?
-                                Component.getDefaultScheme() : builder.scheme)
-                        // host 一定不能为空
-                        .authority(
+                StringBuffer authoritySB = new StringBuffer();
+                if (userInfo != null && !userInfo.isEmpty()) {
+                    authoritySB
+                            .append(Uri.encode(userInfo))
+                            .append("@");
+                }
+                authoritySB.append(
+                        Uri.encode(
                                 Utils.checkStringNullPointer(
                                         builder.host, "host",
                                         "do you forget call host() to set host?"
                                 )
                         )
+                );
+                uriBuilder
+                        .scheme(TextUtils.isEmpty(builder.scheme) ?
+                                Component.getConfig().getDefaultScheme() : builder.scheme)
+                        // host 一定不能为空
+                        .encodedAuthority(authoritySB.toString())
                         .path(
                                 Utils.checkStringNullPointer(
                                         builder.path, "path",
@@ -743,8 +879,6 @@ public class RouterRequest {
 
         /**
          * 构建一个URL,如果构建失败会抛出异常
-         *
-         * @return
          */
         @NonNull
         public String buildURL() {

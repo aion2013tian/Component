@@ -43,8 +43,11 @@ public class TestServiceAct extends AppCompatActivity {
     }
 
     public void loadComponent1Fragment(View view) {
+        Bundle bundle = new Bundle();
+        bundle.putInt("age", 22);
         Fragment fragment = Router
                 .with("component1.fragment")
+                .putInt("age", 22)
                 .navigate();
         if (fragment == null) {
             Toast.makeText(this, "对应的 component1.fragment 没有找到", Toast.LENGTH_SHORT).show();
@@ -84,12 +87,7 @@ public class TestServiceAct extends AppCompatActivity {
 
     public void rxServiceUse1(View view) {
         RxServiceManager.with(AnnoMethodService.class)
-                .map(new Function<AnnoMethodService, String>() {
-                    @Override
-                    public String apply(AnnoMethodService service) throws Exception {
-                        return service.test();
-                    }
-                })
+                .map(service -> service.test())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribeOn(Schedulers.io())
                 .subscribe(new Consumer<String>() {
@@ -107,12 +105,7 @@ public class TestServiceAct extends AppCompatActivity {
 
     public void rxServiceUse2(View view) {
         RxServiceManager.with(Component1Service.class)
-                .flatMap(new Function<Component1Service, SingleSource<String>>() {
-                    @Override
-                    public SingleSource<String> apply(Component1Service service) throws Exception {
-                        return service.testError();
-                    }
-                })
+                .flatMap((Function<Component1Service, SingleSource<String>>) service -> service.testError())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribeOn(Schedulers.io())
                 .subscribe(new Consumer<String>() {

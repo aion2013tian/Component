@@ -23,7 +23,7 @@ import io.reactivex.schedulers.Schedulers;
 /**
  * time   : 2018/12/03
  *
- * @author : xiaojinzi 30212
+ * @author : xiaojinzi
  */
 @InterceptorAnno(InterceptorConfig.USER_LOGIN_FOR_TEST)
 public class LoginForTestInterceptor implements RouterInterceptor {
@@ -33,7 +33,7 @@ public class LoginForTestInterceptor implements RouterInterceptor {
 
     @Override
     public void intercept(final Chain chain) throws Exception {
-        final Context context = chain.request().getRawContext();
+        final Context context = chain.request().getRawOrTopActivity();
         UserService userService = ServiceManager.get(UserService.class);
         if (chain.request().uri.toString().contains("user/login")) {
             chain.proceed(chain.request());

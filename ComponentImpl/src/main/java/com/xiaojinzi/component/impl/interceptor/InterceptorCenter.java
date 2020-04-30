@@ -1,17 +1,19 @@
 package com.xiaojinzi.component.impl.interceptor;
 
+import android.support.annotation.MainThread;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
 import com.xiaojinzi.component.Component;
 import com.xiaojinzi.component.ComponentUtil;
-import com.xiaojinzi.component.anno.support.CheckClassName;
+import com.xiaojinzi.component.anno.support.CheckClassNameAnno;
 import com.xiaojinzi.component.error.InterceptorNameExistException;
 import com.xiaojinzi.component.impl.RouterInterceptor;
 import com.xiaojinzi.component.interceptor.IComponentCenterInterceptor;
 import com.xiaojinzi.component.interceptor.IComponentHostInterceptor;
 import com.xiaojinzi.component.support.ASMUtil;
 import com.xiaojinzi.component.support.RouterInterceptorCache;
+import com.xiaojinzi.component.support.Utils;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -26,9 +28,9 @@ import java.util.Set;
  * 中央拦截器
  * time   : 2018/12/26
  *
- * @author : xiaojinzi 30212
+ * @author : xiaojinzi
  */
-@CheckClassName
+@CheckClassNameAnno
 public class InterceptorCenter implements IComponentCenterInterceptor {
 
     private InterceptorCenter() {
@@ -78,9 +80,8 @@ public class InterceptorCenter implements IComponentCenterInterceptor {
 
     /**
      * 获取全局拦截器
-     *
-     * @return
      */
+    @MainThread
     public List<RouterInterceptor> getGlobalInterceptorList() {
         if (isInterceptorListHaveChange) {
             loadAllGlobalInterceptor();
@@ -98,9 +99,7 @@ public class InterceptorCenter implements IComponentCenterInterceptor {
         moduleInterceptorMap.put(interceptor.getHost(), interceptor);
         // 子拦截器列表
         Map<String, Class<? extends RouterInterceptor>> childInterceptorMap = interceptor.getInterceptorMap();
-        if (childInterceptorMap != null) {
-            mInterceptorMap.putAll(childInterceptorMap);
-        }
+        mInterceptorMap.putAll(childInterceptorMap);
     }
 
     @Override
@@ -121,11 +120,9 @@ public class InterceptorCenter implements IComponentCenterInterceptor {
         isInterceptorListHaveChange = true;
         // 子拦截器列表
         Map<String, Class<? extends RouterInterceptor>> childInterceptorMap = interceptor.getInterceptorMap();
-        if (childInterceptorMap != null) {
-            for (Map.Entry<String, Class<? extends RouterInterceptor>> entry : childInterceptorMap.entrySet()) {
-                mInterceptorMap.remove(entry.getKey());
-                RouterInterceptorCache.removeCache(entry.getValue());
-            }
+        for (Map.Entry<String, Class<? extends RouterInterceptor>> entry : childInterceptorMap.entrySet()) {
+            mInterceptorMap.remove(entry.getKey());
+            RouterInterceptorCache.removeCache(entry.getValue());
         }
     }
 
@@ -138,6 +135,7 @@ public class InterceptorCenter implements IComponentCenterInterceptor {
     /**
      * 按顺序弄好所有全局拦截器
      */
+    @MainThread
     private void loadAllGlobalInterceptor() {
         mGlobalInterceptorList.clear();
         List<InterceptorBean> totalList = new ArrayList<>();
@@ -165,12 +163,13 @@ public class InterceptorCenter implements IComponentCenterInterceptor {
     }
 
     @Nullable
+    @MainThread
     public IComponentHostInterceptor findModuleInterceptor(String host) {
+        Utils.checkMainThread();
         try {
-
-            if (Component.isInitOptimize()) {
+            if (Component.getConfig().isOptimizeInit()) {
                 return ASMUtil.findModuleInterceptorAsmImpl(host);
-            }else {
+            } else {
                 Class<? extends IComponentHostInterceptor> clazz = null;
                 String className = ComponentUtil.genHostInterceptorClassName(host);
                 clazz = (Class<? extends IComponentHostInterceptor>) Class.forName(className);
@@ -184,6 +183,7 @@ public class InterceptorCenter implements IComponentCenterInterceptor {
 
     @Nullable
     @Override
+    @MainThread
     public RouterInterceptor getByName(@Nullable String interceptorName) {
         if (interceptorName == null) {
             return null;
@@ -203,14 +203,19 @@ public class InterceptorCenter implements IComponentCenterInterceptor {
     /**
      * 做拦截器的名称是否重复的工作
      */
+    @MainThread
     public void check() {
+        Utils.checkMainThread();
         Set<String> set = new HashSet<>();
         for (Map.Entry<String, IComponentHostInterceptor> entry : moduleInterceptorMap.entrySet()) {
             IComponentHostInterceptor childInterceptor = entry.getValue();
-            if (childInterceptor == null || childInterceptor.getInterceptorNames() == null) {
+            if (childInterceptor == null) {
                 continue;
             }
             Set<String> childInterceptorNames = childInterceptor.getInterceptorNames();
+            if (childInterceptorNames.isEmpty()) {
+                continue;
+            }
             for (String interceptorName : childInterceptorNames) {
                 if (set.contains(interceptorName)) {
                     throw new InterceptorNameExistException("the interceptor's name is exist：" + interceptorName);

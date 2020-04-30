@@ -12,7 +12,6 @@ import org.reactivestreams.Publisher;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.util.concurrent.Callable;
 
 import io.reactivex.Completable;
 import io.reactivex.CompletableSource;
@@ -32,7 +31,7 @@ import io.reactivex.functions.Function;
  * 这里都能帮您自动过滤掉,如果你写了错误处理,则会回调给您
  * time   : 2019/01/09
  *
- * @author : xiaojinzi 30212
+ * @author : xiaojinzi
  */
 public class RxServiceManager {
 
@@ -50,42 +49,33 @@ public class RxServiceManager {
      * 代替,当然了,真实的错误在 {@link Throwable#getCause()} 中可以获取到
      * 5. 如果服务方法返回的是 RxJava 的五种 Observable : [Single,Observable,Flowable,Maybe,Completable]
      * 当错误走了 RxJava 的OnError,这里也会把错误包装成 {@link RxJavaException},真实错误在 {@link Throwable#getCause()} 中
-     *
-     * @param tClass
-     * @param <T>
-     * @return
      */
     @NonNull
     public static <T> Single<T> with(@NonNull final Class<T> tClass) {
-        return Single.fromCallable(new Callable<T>() {
+        return Single.create(new SingleOnSubscribe<T>() {
             @Override
-            public T call() throws Exception {
-                T tempImpl = null;
-                if (Utils.isMainThread()) {
-                    tempImpl = ServiceManager.get(tClass);
-                } else {
-                    // 这段代码如何为空的话会直接抛出异常
-                    tempImpl = blockingGetInChildThread(tClass);
+            public void subscribe(SingleEmitter<T> emitter) throws Exception {
+                try {
+                    final T serviceImpl = ServiceManager.get(tClass);
+                    if (serviceImpl == null) {
+                        throw new ServiceNotFoundException(tClass.getName());
+                    }
+                    if (emitter.isDisposed()) {
+                        return;
+                    }
+                    emitter.onSuccess(proxy(tClass, serviceImpl));
+                } catch (Exception e) {
+                    if (emitter.isDisposed()) {
+                        return;
+                    }
+                    emitter.onError(e);
                 }
-                final T serviceImpl = tempImpl;
-                if (serviceImpl == null) {
-                    throw new ServiceNotFoundException(tClass.getName());
-                }
-                // 这个是为了让每一个错误都能被管控,然后如果用户不想处理的话,我这边都自动忽略掉
-                return proxy(tClass, serviceImpl);
             }
-
-
         });
     }
 
     /**
      * 创建代理对象包装错误
-     *
-     * @param tClass
-     * @param serviceImpl
-     * @param <T>
-     * @return
      */
     @NonNull
     private static <T> T proxy(@NonNull final Class<T> tClass, final T serviceImpl) {
@@ -156,36 +146,6 @@ public class RxServiceManager {
                 }
             }
         });
-    }
-
-    /**
-     * 在主线程中去创建对象,然后在其他线程拿到
-     *
-     * @param tClass
-     * @param <T>
-     * @return
-     */
-    private static <T> T blockingGetInChildThread(@NonNull final Class<T> tClass) {
-        return Single.create(new SingleOnSubscribe<T>() {
-            @Override
-            public void subscribe(final SingleEmitter<T> emitter) throws Exception {
-                // 主线程去获取,因为框架任何一个用户自定义的类创建的时候都会在主线程上被创建
-                Utils.postActionToMainThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        T t = ServiceManager.get(tClass);
-                        if (emitter.isDisposed()) {
-                            return;
-                        }
-                        if (t == null) {
-                            emitter.onError(new ServiceNotFoundException("class:" + tClass.getName()));
-                        } else {
-                            emitter.onSuccess(t);
-                        }
-                    }
-                });
-            }
-        }).blockingGet();
     }
 
 }

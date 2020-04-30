@@ -15,6 +15,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -78,13 +79,27 @@ public class FragmentProcessor extends BaseHostProcessor {
 
     private final List<Element> annoElementList = new ArrayList<>();
 
+    private final Set<String> nameSet = new HashSet<>();
+
     private void parseAnnotation(Set<? extends Element> annoElements) {
         annoElementList.clear();
+        nameSet.clear();
         for (Element element : annoElements) {
             // 如果是一个 Service
             final FragmentAnno anno = element.getAnnotation(FragmentAnno.class);
             if (anno == null) {
                 continue;
+            }
+            String[] interceptorNames = anno.value();
+            for (String interceptorName : interceptorNames) {
+                if ("".equalsIgnoreCase(interceptorName)) {
+                    throw new ProcessException("the name of interceptor can't be empty or null");
+                }
+                // 模块不能有相同的
+                if (nameSet.contains(interceptorName)) {
+                    throw new ProcessException("the name of '" + interceptorName + "' is already exist");
+                }
+                nameSet.add(interceptorName);
             }
             annoElementList.add(element);
         }
@@ -102,13 +117,17 @@ public class FragmentProcessor extends BaseHostProcessor {
         MethodSpec initHostMethod = generateInitHostMethod();
         MethodSpec onCreateMethod = generateOnCreateMethod();
         MethodSpec onDestroyMethod = generateOnDestroyMethod();
+        MethodSpec onGetFragmentMapMethod = generateGetFragmentMapMethod();
         TypeSpec typeSpec = TypeSpec.classBuilder(cn)
+                .addAnnotation(mClassNameKeep)
+                .addAnnotation(mClassNameComponentGeneratedAnno)
                 .addModifiers(Modifier.PUBLIC)
                 .addModifiers(Modifier.FINAL)
                 .superclass(superClass)
                 .addMethod(initHostMethod)
                 .addMethod(onCreateMethod)
                 .addMethod(onDestroyMethod)
+                .addMethod(onGetFragmentMapMethod)
                 .build();
 
         try {
@@ -154,53 +173,34 @@ public class FragmentProcessor extends BaseHostProcessor {
                 }
                 FragmentAnno anno = element.getAnnotation(FragmentAnno.class);
                 String implName = "implName" + atomicInteger.incrementAndGet();
-                if (anno.singleTon()) {
-                    MethodSpec.Builder getRawMethodBuilder = MethodSpec.methodBuilder("applyRaw")
-                            .addAnnotation(Override.class)
-                            .addParameter(bundleParameter)
-                            .addModifiers(Modifier.PROTECTED);
-                    if (serviceImplCallPath == null) {
-                        boolean haveDefaultConstructor = isHaveDefaultConstructor(element.toString());
-                        getRawMethodBuilder
-                                .addStatement("return new $T($N)", serviceImplTypeName, (haveDefaultConstructor ? "" : NAME_OF_APPLICATION))
-                                .returns(TypeName.get(element.asType()));
-                    } else {
-                        getRawMethodBuilder
-                                .beginControlFlow("if(bundle == null)")
-                                .addStatement("bundle = new Bundle()")
-                                .endControlFlow()
-                                .addStatement("return $N(bundle)", serviceImplCallPath)
-                                .returns(serviceImplTypeName);
-                    }
-                    TypeSpec innerTypeSpec = TypeSpec.anonymousClassBuilder("")
-                            .addSuperinterface(ParameterizedTypeName.get(singletonFunction1ClassName, bundleTypeName, serviceImplTypeName))
-                            .addMethod(getRawMethodBuilder.build())
-                            .build();
-                    methodSpecBuilder.addStatement("$T $N = $L", function1ClassName, implName, innerTypeSpec);
+
+                MethodSpec.Builder getMethodBuilder = MethodSpec.methodBuilder("apply")
+                        .addAnnotation(Override.class)
+                        .addParameter(bundleParameter)
+                        .addModifiers(Modifier.PUBLIC);
+                if (serviceImplCallPath == null) {
+                    boolean haveDefaultConstructor = isHaveDefaultConstructor(element.toString());
+                    getMethodBuilder
+                            .beginControlFlow("if(bundle == null)")
+                            .addStatement("bundle = new Bundle()")
+                            .endControlFlow()
+                            .addStatement("$T fragment =  new $T($N)", serviceImplTypeName, serviceImplTypeName, (haveDefaultConstructor ? "" : NAME_OF_APPLICATION))
+                            .addStatement("fragment.setArguments(bundle)")
+                            .addStatement("return fragment")
+                            .returns(TypeName.get(element.asType()));
                 } else {
-                    MethodSpec.Builder getMethodBuilder = MethodSpec.methodBuilder("apply")
-                            .addAnnotation(Override.class)
-                            .addParameter(bundleParameter)
-                            .addModifiers(Modifier.PUBLIC);
-                    if (serviceImplCallPath == null) {
-                        boolean haveDefaultConstructor = isHaveDefaultConstructor(element.toString());
-                        getMethodBuilder
-                                .addStatement("return new $T($N)", serviceImplTypeName, (haveDefaultConstructor ? "" : NAME_OF_APPLICATION))
-                                .returns(TypeName.get(element.asType()));
-                    } else {
-                        getMethodBuilder
-                                .beginControlFlow("if(bundle == null)")
-                                .addStatement("bundle = new Bundle()")
-                                .endControlFlow()
-                                .addStatement("return $N(bundle)", serviceImplCallPath)
-                                .returns(serviceImplTypeName);
-                    }
-                    TypeSpec innerTypeSpec = TypeSpec.anonymousClassBuilder("")
-                            .addSuperinterface(ParameterizedTypeName.get(function1ClassName, bundleTypeName, serviceImplTypeName))
-                            .addMethod(getMethodBuilder.build())
-                            .build();
-                    methodSpecBuilder.addStatement("$T $N = $L", function1ClassName, implName, innerTypeSpec);
+                    getMethodBuilder
+                            .beginControlFlow("if(bundle == null)")
+                            .addStatement("bundle = new Bundle()")
+                            .endControlFlow()
+                            .addStatement("return $N(bundle)", serviceImplCallPath)
+                            .returns(serviceImplTypeName);
                 }
+                TypeSpec innerTypeSpec = TypeSpec.anonymousClassBuilder("")
+                        .addSuperinterface(ParameterizedTypeName.get(function1ClassName, bundleTypeName, serviceImplTypeName))
+                        .addMethod(getMethodBuilder.build())
+                        .build();
+                methodSpecBuilder.addStatement("$T $N = $L", function1ClassName, implName, innerTypeSpec);
 
                 List<String> fragmentFlags = Arrays.asList(anno.value());
                 for (String fragmentFlag : fragmentFlags) {
@@ -230,6 +230,30 @@ public class FragmentProcessor extends BaseHostProcessor {
                 }
             }
         });
+        return methodSpecBuilder.build();
+    }
+
+    private MethodSpec generateGetFragmentMapMethod() {
+
+        ParameterizedTypeName fragmentMapParameterizedTypeName =
+                ParameterizedTypeName.get(mClassNameHashSet, TypeName.get(mTypeElementString.asType()));
+
+        final MethodSpec.Builder methodSpecBuilder = MethodSpec.methodBuilder("getFragmentNameSet")
+                .returns(fragmentMapParameterizedTypeName)
+                .addAnnotation(Override.class)
+                .addModifiers(Modifier.PUBLIC);
+        methodSpecBuilder.addStatement("HashSet<String> set = new HashSet();");
+        annoElementList.forEach(new Consumer<Element>() {
+            @Override
+            public void accept(Element element) {
+                FragmentAnno anno = element.getAnnotation(FragmentAnno.class);
+                List<String> fragmentFlags = Arrays.asList(anno.value());
+                for (String fragmentFlag : fragmentFlags) {
+                    methodSpecBuilder.addStatement("set.add($S)", fragmentFlag);
+                }
+            }
+        });
+        methodSpecBuilder.addStatement("return set");
         return methodSpecBuilder.build();
     }
 

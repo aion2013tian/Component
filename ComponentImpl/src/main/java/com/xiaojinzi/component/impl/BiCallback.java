@@ -4,8 +4,10 @@ import android.support.annotation.MainThread;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
-import com.xiaojinzi.component.anno.support.CheckClassName;
+import com.xiaojinzi.component.anno.support.CheckClassNameAnno;
 import com.xiaojinzi.component.support.Function;
+import com.xiaojinzi.component.support.OnRouterCancel;
+import com.xiaojinzi.component.support.OnRouterError;
 import com.xiaojinzi.component.support.Utils;
 
 /**
@@ -13,9 +15,9 @@ import com.xiaojinzi.component.support.Utils;
  * <p>
  * 详细的请查看 {@link Callback}
  *
- * @author xiaojinzi 30212
+ * @author xiaojinzi
  */
-@CheckClassName
+@CheckClassNameAnno
 public interface BiCallback<T> extends OnRouterCancel, OnRouterError {
 
     /**
@@ -30,10 +32,10 @@ public interface BiCallback<T> extends OnRouterCancel, OnRouterError {
     /**
      * 做一个转化
      *
-     * @param <T>
-     * @param <R>
+     * @param <T> T 转化为 R
+     * @param <R> T 转化为 R
      */
-    abstract class Map<T, R> implements BiCallback<T>,Function<T, R> {
+    abstract class Map<T, R> implements BiCallback<T>, Function<T, R> {
 
         @NonNull
         private BiCallback targetBiCallback;

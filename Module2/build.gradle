@@ -15,7 +15,12 @@ android {
 
         javaCompileOptions {
             annotationProcessorOptions {
-                arguments = ["HOST": "component2"]
+                // arguments = ["HOST": "component2"]
+                arguments = [
+                        "HOST"           : "component2",
+                        "RouterDocFolder": project.property("component_router_doc_folder"),
+                        "RouterDocEnable": String.valueOf(project.property("componnet_router_doc_enable"))
+                ]
             }
         }
 
@@ -34,9 +39,9 @@ dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     api project(':ModuleBase')
-    if (Boolean.parseBoolean(rootProject.ext.isDependMavenOnline)) {
+    if (rootProject.ext.isDependMavenOnline) {
         kapt libs.component_compiler
-    }else {
+    } else {
         kapt project(':ComponentCompiler')
     }
 }

@@ -3,14 +3,12 @@ package com.xiaojinzi.component.support;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
-import com.xiaojinzi.component.anno.support.CheckClassName;
+import com.xiaojinzi.component.anno.support.CheckClassNameAnno;
 
 /**
  * 单例服务,这是注册服务默认的形式
- *
- * @param <T>
  */
-@CheckClassName
+@CheckClassNameAnno
 public abstract class SingletonCallable<T> implements Callable<T> {
 
     @Nullable
@@ -30,8 +28,6 @@ public abstract class SingletonCallable<T> implements Callable<T> {
 
     /**
      * 获取真正的对象
-     *
-     * @return
      */
     @NonNull
     protected abstract T getRaw();

@@ -4,19 +4,18 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
 import com.xiaojinzi.component.Component;
-import com.xiaojinzi.component.anno.support.CheckClassName;
+import com.xiaojinzi.component.anno.support.CheckClassNameAnno;
 import com.xiaojinzi.component.cache.ClassCache;
-import com.xiaojinzi.component.condition.Condition;
 import com.xiaojinzi.component.error.CreateInterceptorException;
 
 /**
- * 条件的缓存 {@link com.xiaojinzi.component.condition.Condition}
+ * 条件的缓存 {@link Condition}
  * <p>
  * time   : 2018/12/03
  *
- * @author : xiaojinzi 30212
+ * @author : xiaojinzi
  */
-@CheckClassName
+@CheckClassNameAnno
 public class ConditionCache {
 
     private ConditionCache() {
@@ -45,10 +44,6 @@ public class ConditionCache {
             }
         }
         return t;
-    }
-
-    public static synchronized void removeCache(@NonNull Class<? extends Condition> tClass) {
-        ClassCache.remove(tClass);
     }
 
 }

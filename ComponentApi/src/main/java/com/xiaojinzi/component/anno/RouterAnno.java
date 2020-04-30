@@ -19,7 +19,7 @@ import java.lang.annotation.Target;
  * 而你自己通过 RouterRequest.bundle.getStringExtra("name") 则获取不到, 所以获取参数尽量使用
  * ParameterSupport 类, 这样可以支持获取到 query 中的值, 当然你也可以使用自动注入功能
  * Component.inject(this) 即可, 不过这样要配合注解使用:
- * {@link FiledAutowiredAnno} 和 {@link ServiceAutowiredAnno}
+ * {@link AttrValueAutowiredAnno} 和 {@link ServiceAutowiredAnno}
  */
 @Target({ElementType.TYPE, ElementType.METHOD})
 @Retention(RetentionPolicy.CLASS)
@@ -27,15 +27,11 @@ public @interface RouterAnno {
 
     /**
      * 定义host
-     *
-     * @return
      */
     String host() default "";
 
     /**
      * 路径
-     *
-     * @return
      */
     String path() default "";
 
@@ -55,12 +51,22 @@ public @interface RouterAnno {
     Class[] interceptors() default {};
 
     /**
+     * {@link #interceptors()} 拦截器的优先级. 值越大优先级越高
+     */
+    int[] interceptorPriorities() default {};
+
+    /**
      * 拦截器的名字的列表,可以指定其他模块的拦截器
      * 这点是跨模块的,很棒的
      *
      * @return 返回该界面要执行的拦截器的名称
      */
     String[] interceptorNames() default {};
+
+    /**
+     * {@link #interceptorNames()} 拦截器的优先级. 值越大优先级越高
+     */
+    int[] interceptorNamePriorities() default {};
 
     /**
      * 描述信息

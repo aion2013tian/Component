@@ -11,14 +11,13 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.util.SparseArray;
 
-import com.xiaojinzi.component.anno.support.CheckClassName;
+import com.xiaojinzi.component.anno.support.CheckClassNameAnno;
 import com.xiaojinzi.component.bean.ActivityResult;
 import com.xiaojinzi.component.error.UnknowException;
 import com.xiaojinzi.component.error.ignore.ActivityResultException;
 import com.xiaojinzi.component.error.ignore.InterceptorNotFoundException;
 import com.xiaojinzi.component.error.ignore.NavigationFailException;
 import com.xiaojinzi.component.error.ignore.TargetActivityNotFoundException;
-import com.xiaojinzi.component.impl.fragment.RxFragmentManager;
 import com.xiaojinzi.component.support.Action;
 import com.xiaojinzi.component.support.CallbackAdapter;
 import com.xiaojinzi.component.support.NavigationDisposable;
@@ -38,13 +37,14 @@ import io.reactivex.functions.Consumer;
 import io.reactivex.functions.Function;
 
 /**
- * 使用这个可以结合 RxJava 中的{@link io.reactivex.Single} 使用,会很方便
+ * 使用这个可以结合 RxJava 中的
+ * {@link Single} 和 {@link Completable} 使用,会很方便
  * <p>
  * time   : 2018/11/03
  *
- * @author : xiaojinzi 30212
+ * @author : xiaojinzi
  */
-@CheckClassName
+@CheckClassNameAnno
 public class RxRouter extends Router {
 
     @NonNull
@@ -59,10 +59,8 @@ public class RxRouter extends Router {
 
     /**
      * 这个方法父类也有一个静态的,但是父类返回的是 {@link Navigator} 而这个返回的是
-     * {@link RxNavigator}
      *
-     * @param context
-     * @return
+     * @return {@link RxNavigator}
      */
     public static RxNavigator with(@NonNull Context context) {
         return new RxNavigator(context);
@@ -71,25 +69,9 @@ public class RxRouter extends Router {
     /**
      * 这个方法父类也有一个静态的,但是父类返回的是 {@link Navigator} 而这个返回的是
      * {@link RxNavigator}
-     *
-     * @param fragment
-     * @return
      */
     public static RxNavigator with(@NonNull Fragment fragment) {
         return new RxNavigator(fragment);
-    }
-
-    public static class RxFragmentNavigator extends FragmentNavigator {
-
-        public RxFragmentNavigator(@NonNull String fragmentFlag) {
-            super(fragmentFlag);
-        }
-
-        @NonNull
-        public Single<Fragment> call() {
-            return RxFragmentManager.with(fragmentFlag, bundle);
-        }
-
     }
 
     public static class RxNavigator extends Navigator {
@@ -107,288 +89,372 @@ public class RxRouter extends Router {
         }
 
         @Override
-        public RxNavigator beforJumpAction(@NonNull Action action) {
-            return (RxNavigator) super.beforJumpAction(action);
+        public RxNavigator beforAction(@NonNull @MainThread Action action) {
+            super.beforAction(action);
+            return this;
         }
 
         @Override
-        public RxNavigator afterJumpAction(@NonNull Action action) {
-            return (RxNavigator) super.afterJumpAction(action);
+        public RxNavigator beforStartAction(@NonNull @MainThread Action action) {
+            super.beforStartAction(action);
+            return this;
         }
 
         @Override
-        public RxNavigator afterErrorAction(@Nullable Action action) {
-            return (RxNavigator) super.afterErrorAction(action);
+        public RxNavigator afterStartAction(@NonNull @MainThread Action action) {
+            super.afterStartAction(action);
+            return this;
         }
 
         @Override
-        public RxNavigator afterEventAction(@Nullable Action action) {
-            return (RxNavigator) super.afterEventAction(action);
+        public RxNavigator afterAction(@NonNull @MainThread Action action) {
+            super.afterAction(action);
+            return this;
         }
 
         @Override
-        public RxNavigator intentConsumer(@NonNull com.xiaojinzi.component.support.Consumer<Intent> intentConsumer) {
-            return (RxNavigator) super.intentConsumer(intentConsumer);
+        public RxNavigator afterErrorAction(@Nullable @MainThread Action action) {
+            super.afterErrorAction(action);
+            return this;
+        }
+
+        @Override
+        public RxNavigator afterEventAction(@Nullable @MainThread Action action) {
+            super.afterEventAction(action);
+            return this;
+        }
+
+        @Override
+        public RxNavigator intentConsumer(
+                @NonNull @MainThread com.xiaojinzi.component.support.Consumer<Intent> intentConsumer) {
+            super.intentConsumer(intentConsumer);
+            return this;
         }
 
         @Override
         public RxNavigator addIntentFlags(@Nullable Integer... flags) {
-            return (RxNavigator) super.addIntentFlags(flags);
+            super.addIntentFlags(flags);
+            return this;
         }
 
         @Override
         public RxNavigator addIntentCategories(@Nullable String... categories) {
-            return (RxNavigator) super.addIntentCategories(categories);
+            super.addIntentCategories(categories);
+            return this;
         }
 
         @Override
         public RxNavigator interceptors(@NonNull RouterInterceptor... interceptors) {
-            return (RxNavigator) super.interceptors(interceptors);
+            super.interceptors(interceptors);
+            return this;
         }
 
         @Override
         public RxNavigator interceptors(@NonNull Class<? extends RouterInterceptor>... interceptors) {
-            return (RxNavigator) super.interceptors(interceptors);
+            super.interceptors(interceptors);
+            return this;
         }
 
         @Override
         public RxNavigator interceptorNames(@NonNull String... interceptors) {
-            return (RxNavigator) super.interceptorNames(interceptors);
+            super.interceptorNames(interceptors);
+            return this;
+        }
+
+        public RxNavigator autoCancel(boolean autoCancel) {
+            super.autoCancel(autoCancel);
+            return this;
+        }
+
+        @Override
+        public RxNavigator useRouteRepeatCheck(boolean routeRepeatCheck) {
+            super.useRouteRepeatCheck(routeRepeatCheck);
+            return this;
         }
 
         @Override
         public RxNavigator url(@NonNull String url) {
-            return (RxNavigator) super.url(url);
+            super.url(url);
+            return this;
         }
 
         @Override
         public RxNavigator scheme(@NonNull String scheme) {
-            return (RxNavigator) super.scheme(scheme);
+            super.scheme(scheme);
+            return this;
         }
 
         @Override
         public RxNavigator hostAndPath(@NonNull String hostAndPath) {
-            return (RxNavigator) super.hostAndPath(hostAndPath);
+            super.hostAndPath(hostAndPath);
+            return this;
+        }
+
+        @Override
+        public RxNavigator userInfo(@NonNull String userInfo) {
+            super.userInfo(userInfo);
+            return this;
         }
 
         @Override
         public RxNavigator host(@NonNull String host) {
-            return (RxNavigator) super.host(host);
+            super.host(host);
+            return this;
         }
 
         @Override
         public RxNavigator path(@NonNull String path) {
-            return (RxNavigator) super.path(path);
+            super.path(path);
+            return this;
         }
 
         @Override
         public RxNavigator requestCode(@Nullable Integer requestCode) {
-            return (RxNavigator) super.requestCode(requestCode);
+            super.requestCode(requestCode);
+            return this;
         }
 
         @Override
         public RxNavigator options(@Nullable Bundle options) {
-            return (RxNavigator) super.options(options);
+            super.options(options);
+            return this;
         }
 
         /**
          * requestCode 会随机的生成
-         *
-         * @return
          */
         public RxNavigator requestCodeRandom() {
             return requestCode(RANDOM_REQUSET_CODE);
         }
 
         @Override
-        public RxNavigator putBundle(@NonNull String key, @Nullable Bundle bundle) {
-            return (RxNavigator) super.putBundle(key, bundle);
+        public RxNavigator putAll(@NonNull Bundle bundle) {
+            super.putAll(bundle);
+            return this;
         }
 
         @Override
-        public RxNavigator putAll(@NonNull Bundle bundle) {
-            return (RxNavigator) super.putAll(bundle);
+        public RxNavigator putBundle(@NonNull String key, @Nullable Bundle bundle) {
+            super.putBundle(key, bundle);
+            return this;
         }
 
         @Override
         public RxNavigator putCharSequence(@NonNull String key, @Nullable CharSequence value) {
-            return (RxNavigator) super.putCharSequence(key, value);
+            super.putCharSequence(key, value);
+            return this;
         }
 
         @Override
         public RxNavigator putCharSequenceArray(@NonNull String key, @Nullable CharSequence[] value) {
-            return (RxNavigator) super.putCharSequenceArray(key, value);
+            super.putCharSequenceArray(key, value);
+            return this;
         }
 
         @Override
-        public RxNavigator putCharSequenceArrayList(@NonNull String key, @Nullable ArrayList<CharSequence> value) {
-            return (RxNavigator) super.putCharSequenceArrayList(key, value);
+        public RxNavigator putCharSequenceArrayList(@NonNull String key,
+                                                    @Nullable ArrayList<CharSequence> value) {
+            super.putCharSequenceArrayList(key, value);
+            return this;
         }
 
         @Override
         public RxNavigator putByte(@NonNull String key, @Nullable byte value) {
-            return (RxNavigator) super.putByte(key, value);
+            super.putByte(key, value);
+            return this;
         }
 
         @Override
         public RxNavigator putByteArray(@NonNull String key, @Nullable byte[] value) {
-            return (RxNavigator) super.putByteArray(key, value);
+            super.putByteArray(key, value);
+            return this;
         }
 
         @Override
         public RxNavigator putChar(@NonNull String key, @Nullable char value) {
-            return (RxNavigator) super.putChar(key, value);
+            super.putChar(key, value);
+            return this;
         }
 
         @Override
         public RxNavigator putCharArray(@NonNull String key, @Nullable char[] value) {
-            return (RxNavigator) super.putCharArray(key, value);
+            super.putCharArray(key, value);
+            return this;
         }
 
         @Override
         public RxNavigator putBoolean(@NonNull String key, @Nullable boolean value) {
-            return (RxNavigator) super.putBoolean(key, value);
+            super.putBoolean(key, value);
+            return this;
         }
 
         @Override
         public RxNavigator putBooleanArray(@NonNull String key, @Nullable boolean[] value) {
-            return (RxNavigator) super.putBooleanArray(key, value);
+            super.putBooleanArray(key, value);
+            return this;
         }
 
         @Override
         public RxNavigator putString(@NonNull String key, @Nullable String value) {
-            return (RxNavigator) super.putString(key, value);
+            super.putString(key, value);
+            return this;
         }
 
         @Override
         public RxNavigator putStringArray(@NonNull String key, @Nullable String[] value) {
-            return (RxNavigator) super.putStringArray(key, value);
+            super.putStringArray(key, value);
+            return this;
         }
 
         @Override
         public RxNavigator putStringArrayList(@NonNull String key, @Nullable ArrayList<String> value) {
-            return (RxNavigator) super.putStringArrayList(key, value);
+            super.putStringArrayList(key, value);
+            return this;
         }
 
         @Override
         public RxNavigator putShort(@NonNull String key, @Nullable short value) {
-            return (RxNavigator) super.putShort(key, value);
+            super.putShort(key, value);
+            return this;
         }
 
         @Override
         public RxNavigator putShortArray(@NonNull String key, @Nullable short[] value) {
-            return (RxNavigator) super.putShortArray(key, value);
+            super.putShortArray(key, value);
+            return this;
         }
 
         @Override
         public RxNavigator putInt(@NonNull String key, @Nullable int value) {
-            return (RxNavigator) super.putInt(key, value);
+            super.putInt(key, value);
+            return this;
         }
 
         @Override
         public RxNavigator putIntArray(@NonNull String key, @Nullable int[] value) {
-            return (RxNavigator) super.putIntArray(key, value);
+            super.putIntArray(key, value);
+            return this;
         }
 
         @Override
         public RxNavigator putIntegerArrayList(@NonNull String key, @Nullable ArrayList<Integer> value) {
-            return (RxNavigator) super.putIntegerArrayList(key, value);
+            super.putIntegerArrayList(key, value);
+            return this;
         }
 
         @Override
         public RxNavigator putLong(@NonNull String key, @Nullable long value) {
-            return (RxNavigator) super.putLong(key, value);
+            super.putLong(key, value);
+            return this;
         }
 
         @Override
         public RxNavigator putLongArray(@NonNull String key, @Nullable long[] value) {
-            return (RxNavigator) super.putLongArray(key, value);
+            super.putLongArray(key, value);
+            return this;
         }
 
         @Override
         public RxNavigator putFloat(@NonNull String key, @Nullable float value) {
-            return (RxNavigator) super.putFloat(key, value);
+            super.putFloat(key, value);
+            return this;
         }
 
         @Override
         public RxNavigator putFloatArray(@NonNull String key, @Nullable float[] value) {
-            return (RxNavigator) super.putFloatArray(key, value);
+            super.putFloatArray(key, value);
+            return this;
         }
 
         @Override
         public RxNavigator putDouble(@NonNull String key, @Nullable double value) {
-            return (RxNavigator) super.putDouble(key, value);
+            super.putDouble(key, value);
+            return this;
         }
 
         @Override
         public RxNavigator putDoubleArray(@NonNull String key, @Nullable double[] value) {
-            return (RxNavigator) super.putDoubleArray(key, value);
+            super.putDoubleArray(key, value);
+            return this;
         }
 
         @Override
         public RxNavigator putParcelable(@NonNull String key, @Nullable Parcelable value) {
-            return (RxNavigator) super.putParcelable(key, value);
+            super.putParcelable(key, value);
+            return this;
         }
 
         @Override
         public RxNavigator putParcelableArray(@NonNull String key, @Nullable Parcelable[] value) {
-            return (RxNavigator) super.putParcelableArray(key, value);
+            super.putParcelableArray(key, value);
+            return this;
         }
 
         @Override
-        public RxNavigator putParcelableArrayList(@NonNull String key, @Nullable ArrayList<? extends Parcelable> value) {
-            return (RxNavigator) super.putParcelableArrayList(key, value);
+        public RxNavigator putParcelableArrayList(@NonNull String key,
+                                                  @Nullable ArrayList<? extends Parcelable> value) {
+            super.putParcelableArrayList(key, value);
+            return this;
         }
 
         @Override
-        public RxNavigator putSparseParcelableArray(@NonNull String key, @Nullable SparseArray<? extends Parcelable> value) {
-            return (RxNavigator) super.putSparseParcelableArray(key, value);
+        public RxNavigator putSparseParcelableArray(@NonNull String key,
+                                                    @Nullable SparseArray<? extends Parcelable> value) {
+            super.putSparseParcelableArray(key, value);
+            return this;
         }
 
         @Override
         public RxNavigator putSerializable(@NonNull String key, @Nullable Serializable value) {
-            return (RxNavigator) super.putSerializable(key, value);
+            super.putSerializable(key, value);
+            return this;
         }
 
         @Override
-        public RxNavigator query(@NonNull String queryName, @Nullable String queryValue) {
-            return (RxNavigator) super.query(queryName, queryValue);
+        public RxNavigator query(@NonNull String queryName, @NonNull String queryValue) {
+            super.query(queryName, queryValue);
+            return this;
         }
 
         @Override
         public RxNavigator query(@NonNull String queryName, boolean queryValue) {
-            return (RxNavigator) super.query(queryName, queryValue);
+            super.query(queryName, queryValue);
+            return this;
         }
 
         @Override
         public RxNavigator query(@NonNull String queryName, byte queryValue) {
-            return (RxNavigator) super.query(queryName, queryValue);
+            super.query(queryName, queryValue);
+            return this;
         }
 
         @Override
         public RxNavigator query(@NonNull String queryName, int queryValue) {
-            return (RxNavigator) super.query(queryName, queryValue);
+            super.query(queryName, queryValue);
+            return this;
         }
 
         @Override
         public RxNavigator query(@NonNull String queryName, float queryValue) {
-            return (RxNavigator) super.query(queryName, queryValue);
+            super.query(queryName, queryValue);
+            return this;
         }
 
         @Override
         public RxNavigator query(@NonNull String queryName, long queryValue) {
-            return (RxNavigator) super.query(queryName, queryValue);
+            super.query(queryName, queryValue);
+            return this;
         }
 
         @Override
         public RxNavigator query(@NonNull String queryName, double queryValue) {
-            return (RxNavigator) super.query(queryName, queryValue);
+            super.query(queryName, queryValue);
+            return this;
         }
 
         /**
          * 一个可以拿到 Intent 的 Observable
          *
-         * @return
          * @see #activityResultCall()
          */
         @NonNull
@@ -593,9 +659,6 @@ public class RxRouter extends Router {
         /**
          * 发射错误,目前这些个发射错误都是为了 {@link RxRouter} 写的,发射的错误和正确的 item 被发射都应该
          * 最终发射在主线程
-         *
-         * @param emitter
-         * @param e
          */
         private static void onErrorEmitter(@MainThread final SingleEmitter<? extends Object> emitter,
                                            @NonNull final Throwable e) {
@@ -618,8 +681,8 @@ public class RxRouter extends Router {
          * 发射错误,目前这些个发射错误都是为了 {@link RxRouter} 写的,发射的错误和正确的 item 被发射都应该
          * 最终发射在主线程
          *
-         * @param emitter
-         * @param e
+         * @param emitter {@link Completable} 的发射器
+         * @param e 跑出的异常
          */
         private static void onErrorEmitter(@MainThread final CompletableEmitter emitter,
                                            @NonNull final Throwable e) {

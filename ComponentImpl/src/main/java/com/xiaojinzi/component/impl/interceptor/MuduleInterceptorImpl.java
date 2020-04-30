@@ -2,6 +2,7 @@ package com.xiaojinzi.component.impl.interceptor;
 
 import android.app.Application;
 import android.support.annotation.CallSuper;
+import android.support.annotation.MainThread;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
@@ -19,7 +20,7 @@ import java.util.Set;
  * 拦截器的代码生成类的基本实现
  * time   : 2018/12/26
  *
- * @author : xiaojinzi 30212
+ * @author : xiaojinzi
  */
 abstract class MuduleInterceptorImpl implements IComponentHostInterceptor {
 
@@ -30,7 +31,7 @@ abstract class MuduleInterceptorImpl implements IComponentHostInterceptor {
     /**
      * 用作销毁一些缓存
      *
-     * @param app
+     * @param app {@link Application}
      */
     @Override
     public void onCreate(@NonNull Application app) {
@@ -47,6 +48,7 @@ abstract class MuduleInterceptorImpl implements IComponentHostInterceptor {
 
     @Override
     @NonNull
+    @MainThread
     public List<InterceptorBean> globalInterceptorList() {
         return Collections.emptyList();
     }
@@ -55,11 +57,12 @@ abstract class MuduleInterceptorImpl implements IComponentHostInterceptor {
      * 初始化拦截器的集合
      */
     @CallSuper
+    @MainThread
     protected void initInterceptorMap() {
         isInitMap = true;
     }
 
-    @Nullable
+    @NonNull
     @Override
     public Set<String> getInterceptorNames() {
         if (!isInitMap) {
@@ -68,17 +71,18 @@ abstract class MuduleInterceptorImpl implements IComponentHostInterceptor {
         return interceptorMap.keySet();
     }
 
-    @Nullable
+    @NonNull
     @Override
     public Map<String, Class<? extends RouterInterceptor>> getInterceptorMap() {
         if (!isInitMap) {
             initInterceptorMap();
         }
-        return interceptorMap;
+        return new HashMap<>(interceptorMap);
     }
 
     @Override
     @Nullable
+    @MainThread
     public RouterInterceptor getByName(@Nullable String name) {
         if (name == null) {
             return null;

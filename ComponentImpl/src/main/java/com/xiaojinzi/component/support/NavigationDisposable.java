@@ -5,7 +5,7 @@ import android.support.annotation.CallSuper;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
-import com.xiaojinzi.component.anno.support.CheckClassName;
+import com.xiaojinzi.component.anno.support.CheckClassNameAnno;
 import com.xiaojinzi.component.impl.Navigator;
 import com.xiaojinzi.component.impl.Router;
 import com.xiaojinzi.component.impl.RouterRequest;
@@ -19,9 +19,9 @@ import com.xiaojinzi.component.impl.RouterRequest;
  * <p>
  * time   : 2019/01/25
  *
- * @author : xiaojinzi 30212
+ * @author : xiaojinzi
  */
-@CheckClassName
+@CheckClassNameAnno
 public interface NavigationDisposable {
 
     /**
