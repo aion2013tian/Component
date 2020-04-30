@@ -116,6 +116,8 @@ public class ModuleAppProcessor extends BaseHostProcessor {
         MethodSpec onCreateMethod = generateOnCreateMethod();
         MethodSpec onDestroyMethod = generateOnDestroyMethod();
         TypeSpec typeSpec = TypeSpec.classBuilder(cn)
+                .addAnnotation(mClassNameKeep)
+                .addAnnotation(mClassNameComponentGeneratedAnno)
                 .addModifiers(Modifier.PUBLIC)
                 .addModifiers(Modifier.FINAL)
                 .superclass(superClass)

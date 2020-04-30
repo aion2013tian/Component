@@ -9,14 +9,19 @@ android {
         versionName "1.0"
         javaCompileOptions {
             annotationProcessorOptions {
-                arguments = ["HOST": "base"]
+                // arguments = ["HOST": "base"]
+                arguments = [
+                        "HOST"           : "base",
+                        "RouterDocFolder": project.property("component_router_doc_folder"),
+                        "RouterDocEnable": String.valueOf(project.property("componnet_router_doc_enable"))
+                ]
             }
         }
     }
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
@@ -31,16 +36,17 @@ dependencies {
     api libs.constraintLayout
     api libs.rxjava
     api libs.rxandroid
+    api libs.gson
 
-    if (Boolean.parseBoolean(rootProject.ext.isDependMavenOnline)) {
+    if (rootProject.ext.isDependMavenOnline) {
         api libs.component_impl_rx
-    }else {
+    } else {
         api project(':ComponentRxImpl')
     }
 
-    if (Boolean.parseBoolean(rootProject.ext.isDependMavenOnline)) {
+    if (rootProject.ext.isDependMavenOnline) {
         annotationProcessor libs.component_compiler
-    }else {
+    } else {
         annotationProcessor project(':ComponentCompiler')
     }
 

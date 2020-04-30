@@ -12,7 +12,9 @@ import com.xiaojinzi.component.anno.ParameterAnno;
 import com.xiaojinzi.component.anno.router.AfterActionAnno;
 import com.xiaojinzi.component.anno.router.AfterErrorActionAnno;
 import com.xiaojinzi.component.anno.router.AfterEventActionAnno;
+import com.xiaojinzi.component.anno.router.AfterStartActionAnno;
 import com.xiaojinzi.component.anno.router.BeforActionAnno;
+import com.xiaojinzi.component.anno.router.BeforStartActionAnno;
 import com.xiaojinzi.component.anno.router.CategoryAnno;
 import com.xiaojinzi.component.anno.router.FlagAnno;
 import com.xiaojinzi.component.anno.router.HostAndPathAnno;
@@ -23,6 +25,7 @@ import com.xiaojinzi.component.anno.router.PathAnno;
 import com.xiaojinzi.component.anno.router.RequestCodeAnno;
 import com.xiaojinzi.component.anno.router.RouterApiAnno;
 import com.xiaojinzi.component.anno.router.UseInteceptorAnno;
+import com.xiaojinzi.component.anno.router.UserInfoAnno;
 
 import org.apache.commons.collections4.CollectionUtils;
 
@@ -45,6 +48,7 @@ import javax.lang.model.element.Name;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.MirroredTypesException;
 import javax.lang.model.type.TypeMirror;
 
@@ -60,10 +64,8 @@ public class RouterApiProcessor extends BaseProcessor {
 
     private TypeElement charsequenceTypeElement;
     private TypeMirror charsequenceTypeMirror;
-    private ClassName charsequenceClassName;
     private TypeName charsequenceTypeName;
     private TypeElement routerTypeElement;
-
 
     private TypeElement navigationDisposableTypeElement;
     private TypeMirror navigationDisposableTypeMirror;
@@ -76,7 +78,8 @@ public class RouterApiProcessor extends BaseProcessor {
 
     // 这个也可能为空的
     private TypeElement routerRxTypeElement;
-    // 这两个可能为null吧,因为没有依赖 RxJava
+
+    // 这几个可能为null吧,因为没有依赖 RxJava
     private TypeMirror completableMirror;
     private TypeMirror singleMirror;
     private TypeMirror singleErasureMirror;
@@ -84,14 +87,9 @@ public class RouterApiProcessor extends BaseProcessor {
     private TypeMirror navigatorTypeMirror;
     private TypeMirror contextTypeMirror;
     private TypeMirror fragmentTypeMirror;
-    private TypeMirror activityTypeMirror;
     private TypeMirror serializableTypeMirror;
     private TypeMirror parcelableTypeMirror;
     private TypeMirror bundleTypeMirror;
-    private ParameterizedTypeName stringArrayListParameterizedTypeName;
-    private ParameterizedTypeName integerArrayListParameterizedTypeName;
-    private ParameterizedTypeName parcelableArrayListParameterizedTypeName;
-    private ParameterizedTypeName charsequenceArrayListParameterizedTypeName;
     private ParameterizedTypeName intentComsumerParameterizedTypeName;
 
     @Override
@@ -107,7 +105,6 @@ public class RouterApiProcessor extends BaseProcessor {
 
         charsequenceTypeElement = mElements.getTypeElement(ComponentConstants.JAVA_CHARSEQUENCE);
         charsequenceTypeMirror = charsequenceTypeElement.asType();
-        charsequenceClassName = ClassName.get(charsequenceTypeElement);
         charsequenceTypeName = TypeName.get(charsequenceTypeMirror);
         routerTypeElement = mElements.getTypeElement(ComponentConstants.ROUTER_CLASS_NAME);
         routerRxTypeElement = mElements.getTypeElement(ComponentConstants.ROUTER_RX_CLASS_NAME);
@@ -122,20 +119,14 @@ public class RouterApiProcessor extends BaseProcessor {
         navigatorTypeMirror = mElements.getTypeElement(ComponentConstants.NAVIGATOR_CLASS_NAME).asType();
         final TypeElement contextTypeElement = mElements.getTypeElement(ComponentConstants.ANDROID_CONTEXT);
         contextTypeMirror = contextTypeElement.asType();
-        final TypeElement fragmentTypeElement = mElements.getTypeElement(ComponentConstants.ANDROID_V4_FRAGMENT);
+        final TypeElement fragmentTypeElement = mElements.getTypeElement(ComponentConstants.ANDROID_FRAGMENT);
         fragmentTypeMirror = fragmentTypeElement.asType();
-        final TypeElement activityTypeElement = mElements.getTypeElement(ComponentConstants.ANDROID_ACTIVITY);
-        activityTypeMirror = activityTypeElement.asType();
         final TypeElement serializableTypeElement = mElements.getTypeElement(ComponentConstants.JAVA_SERIALIZABLE);
         serializableTypeMirror = serializableTypeElement.asType();
         final TypeElement parcelableTypeElement = mElements.getTypeElement(ComponentConstants.ANDROID_PARCELABLE);
         parcelableTypeMirror = parcelableTypeElement.asType();
         final TypeElement bundleTypeElement = mElements.getTypeElement(ComponentConstants.ANDROID_BUNDLE);
         bundleTypeMirror = bundleTypeElement.asType();
-        stringArrayListParameterizedTypeName = ParameterizedTypeName.get(mClassNameArrayList, mClassNameString);
-        integerArrayListParameterizedTypeName = ParameterizedTypeName.get(mClassNameArrayList, ClassName.INT.box());
-        parcelableArrayListParameterizedTypeName = ParameterizedTypeName.get(mClassNameArrayList, TypeName.get(parcelableTypeMirror));
-        charsequenceArrayListParameterizedTypeName = ParameterizedTypeName.get(mClassNameArrayList, TypeName.get(charsequenceTypeMirror));
         intentComsumerParameterizedTypeName = ParameterizedTypeName.get(
                 ClassName.get(mElements.getTypeElement(ComponentConstants.CONSUMER_CLASS_NAME)),
                 TypeName.get(mElements.getTypeElement(ComponentConstants.ANDROID_INTENT).asType())
@@ -172,8 +163,6 @@ public class RouterApiProcessor extends BaseProcessor {
 
     /**
      * 生成一个 RouterApi 的实现类
-     *
-     * @param typeElement
      */
     private void createRouterApiImpl(TypeElement typeElement) {
         // 整个类默认的host注解
@@ -189,6 +178,8 @@ public class RouterApiProcessor extends BaseProcessor {
         // superClassName
         final ClassName superClass = ClassName.get(typeElement);
         TypeSpec.Builder typeSpecBuilder = TypeSpec.classBuilder(cn)
+                .addAnnotation(mClassNameKeep)
+                .addAnnotation(mClassNameComponentGeneratedAnno)
                 .addModifiers(Modifier.PUBLIC)
                 .addModifiers(Modifier.FINAL)
                 .addSuperinterface(superClass);
@@ -211,7 +202,6 @@ public class RouterApiProcessor extends BaseProcessor {
      * @param defaultHost
      */
     private void implementInterfaceMethods(TypeSpec.Builder typeSpecBuilder, TypeElement apiTypeElement, String defaultHost) {
-
         // 拿出所有的方法
         List<? extends Element> enclosedElements = apiTypeElement.getEnclosedElements();
         for (Element methodElement : enclosedElements) {
@@ -219,7 +209,6 @@ public class RouterApiProcessor extends BaseProcessor {
                 implementInterfaceMethod(typeSpecBuilder, (ExecutableElement) methodElement, defaultHost);
             }
         }
-
     }
 
     private void implementInterfaceMethod(TypeSpec.Builder typeSpecBuilder, ExecutableElement executableElement, String defaultHost) {
@@ -227,6 +216,7 @@ public class RouterApiProcessor extends BaseProcessor {
         // 方法的一个调用 path,出错的时候展示用
         String methodPath = executableElement.getEnclosingElement().getSimpleName() + "#" + executableElement.getSimpleName();
 
+        UserInfoAnno userInfoAnnotation = executableElement.getAnnotation(UserInfoAnno.class);
         HostAnno hostAnnotation = executableElement.getAnnotation(HostAnno.class);
         PathAnno pathAnnotation = executableElement.getAnnotation(PathAnno.class);
         HostAndPathAnno hostAndPathAnnotation = executableElement.getAnnotation(HostAndPathAnno.class);
@@ -241,6 +231,7 @@ public class RouterApiProcessor extends BaseProcessor {
         // intent category
         CategoryAnno categoryAnnotation = executableElement.getAnnotation(CategoryAnno.class);
 
+        String userInfo = userInfoAnnotation == null ? null : userInfoAnnotation.value();
         String host = hostAnnotation == null ? defaultHost : hostAnnotation.value();
         String path = pathAnnotation == null ? null : pathAnnotation.value();
         String hostAndPath = hostAndPathAnnotation == null ? null : hostAndPathAnnotation.value();
@@ -273,6 +264,8 @@ public class RouterApiProcessor extends BaseProcessor {
         VariableElement activityBundleOptionsParameter = null;
         VariableElement intentConsumerParameter = null;
         VariableElement beforActionParameter = null;
+        VariableElement beforStartActionParameter = null;
+        VariableElement afterStartActionParameter = null;
         VariableElement afterActionParameter = null;
         VariableElement afterErrorActionParameter = null;
         VariableElement afterEventActionParameter = null;
@@ -299,6 +292,10 @@ public class RouterApiProcessor extends BaseProcessor {
                 intentConsumerParameter = parameter;
             } else if (parameter.getAnnotation(BeforActionAnno.class) != null) { // 如果是 beforAction
                 beforActionParameter = parameter;
+            } else if (parameter.getAnnotation(BeforStartActionAnno.class) != null) { // 如果是 beforStartAction
+                beforStartActionParameter = parameter;
+            } else if (parameter.getAnnotation(AfterStartActionAnno.class) != null) { // 如果是 afterStartAction
+                afterStartActionParameter = parameter;
             } else if (parameter.getAnnotation(AfterActionAnno.class) != null) { // 如果是 afterAction
                 afterActionParameter = parameter;
             } else if (parameter.getAnnotation(AfterErrorActionAnno.class) != null) { // 如果是 afterErrorAction
@@ -342,15 +339,44 @@ public class RouterApiProcessor extends BaseProcessor {
                     parameterStatement.append("\n.putDouble($S,$N)");
                 } else if (parameterTypeName.equals(ClassName.BOOLEAN) || parameterTypeName.equals(ClassName.BOOLEAN.box())) { // 如果是 boolean
                     parameterStatement.append("\n.putBoolean($S,$N)");
-                } else if (stringArrayListParameterizedTypeName.equals(TypeName.get(parameterTypeMirror))) {
-                    parameterStatement.append("\n.putStringArrayList($S,$N)");
-                } else if (integerArrayListParameterizedTypeName.equals(TypeName.get(parameterTypeMirror))) {
-                    parameterStatement.append("\n.putIntegerArrayList($S,$N)");
-                } else if (parcelableArrayListParameterizedTypeName.equals(TypeName.get(parameterTypeMirror))) {
-                    parameterStatement.append("\n.putParcelableArrayList($S,$N)");
-                } else if (charsequenceArrayListParameterizedTypeName.equals(TypeName.get(parameterTypeMirror))) {
-                    parameterStatement.append("\n.putCharSequenceArrayList($S,$N)");
-                } else if (parameterTypeMirror instanceof ArrayType) {
+                } else if (parameterTypeMirror instanceof DeclaredType) {
+                    DeclaredType declaredType = (DeclaredType) parameterTypeMirror;
+                    if (mTypeElementArrayList.asType().equals(declaredType.asElement().asType())) { // 如果外层是 ArrayList
+                        // 泛型的类型
+                        List<? extends TypeMirror> typeArguments = declaredType.getTypeArguments();
+                        if (typeArguments.size() == 1) {
+                            if (mTypeElementString.asType().equals(typeArguments.get(0))) { // 如果是 String
+                                parameterStatement.append("\n.putStringArrayList($S,$N)");
+                            } else if (mTypeElementInteger.asType().equals(typeArguments.get(0))) { // 如果是 Integer
+                                parameterStatement.append("\n.putIntegerArrayList($S,$N)");
+                            } else if (mTypes.isSubtype(typeArguments.get(0), parcelableTypeMirror)) { // 如果是 Parcelable 及其子类
+                                parameterStatement.append("\n.putParcelableArrayList($S,$N)");
+                            } else if (mTypes.isSubtype(typeArguments.get(0), serializableTypeMirror)) { // 如果是 Serializable 及其子类
+                                parameterStatement.append("\n.putSerializable($S,$N)");
+                            } else if (charsequenceTypeMirror.equals(typeArguments.get(0))) { // 如果是 CharSequence
+                                parameterStatement.append("\n.putCharSequenceArrayList($S,$N)");
+                            } else {
+                                throw new ProcessException("can't to resolve unknow type parameter(" + methodPath + "#" + parameter.getSimpleName().toString() + ")");
+                            }
+                        } else {
+                            throw new ProcessException("can't to resolve unknow type parameter(" + methodPath + "#" + parameter.getSimpleName().toString() + ")");
+                        }
+                    } else if (mTypeElementSparseArray.asType().equals(declaredType.asElement().asType())) { // 如果是 SparseArray
+                        // 泛型的类型
+                        List<? extends TypeMirror> typeArguments = declaredType.getTypeArguments();
+                        if (mTypes.isSubtype(typeArguments.get(0), parcelableTypeMirror)) { // 如果是 Parcelable 及其子类
+                            parameterStatement.append("\n.putSparseParcelableArray($S,$N)");
+                        } else {
+                            throw new ProcessException("can't to resolve unknow type parameter(" + methodPath + "#" + parameter.getSimpleName().toString() + ")");
+                        }
+                    } else if (mTypes.isSubtype(parameterTypeMirror, parcelableTypeMirror)) {  // 如果是 Parcelable
+                        parameterStatement.append("\n.putParcelable($S,$N)");
+                    } else if (mTypes.isSubtype(parameterTypeMirror, serializableTypeMirror)) {  // 如果是 Serializable
+                        parameterStatement.append("\n.putSerializable($S,$N)");
+                    } else {
+                        throw new ProcessException("can't to resolve unknow type parameter(" + methodPath + "#" + parameter.getSimpleName().toString() + ")");
+                    }
+                } else if (parameterTypeMirror instanceof ArrayType) { // 如果是数组 []
                     ArrayType parameterArrayType = (ArrayType) parameterTypeMirror;
                     TypeName parameterComponentTypeName = ClassName.get(parameterArrayType.getComponentType());
                     // 如果是一个 String[]
@@ -381,10 +407,6 @@ public class RouterApiProcessor extends BaseProcessor {
                     } else {
                         throw new ProcessException("can't to resolve unknow type parameter(" + methodPath + "#" + parameter.getSimpleName().toString() + ")");
                     }
-                } else if (mTypes.isSubtype(parameterTypeMirror, parcelableTypeMirror)) {  // 如果是 Parcelable
-                    parameterStatement.append("\n.putParcelable($S,$N)");
-                } else if (mTypes.isSubtype(parameterTypeMirror, serializableTypeMirror)) {  // 如果是 Serializable
-                    parameterStatement.append("\n.putSerializable($S,$N)");
                 } else {
                     throw new ProcessException("can't to resolve unknow type parameter(" + methodPath + "#" + parameter.getSimpleName().toString() + ")");
                 }
@@ -492,6 +514,11 @@ public class RouterApiProcessor extends BaseProcessor {
             // throw new ProcessException("do you forget to add a 'Context' or 'Activity' or 'android.support.v4.app.Fragment' parameter to method(" + methodPath + ") ?");
         }
 
+        if (userInfo != null) {
+            routerStatement.append("\n.userInfo($S)");
+            args.add(userInfo);
+        }
+
         // host 和 path
         if (hostAndPath == null) { // 采用 host 和 path 方法
             routerStatement.append("\n.host($S)");
@@ -597,11 +624,19 @@ public class RouterApiProcessor extends BaseProcessor {
 
         // 几个 action
         if (beforActionParameter != null) {
-            routerStatement.append("\n.beforJumpAction($N)");
+            routerStatement.append("\n.beforAction($N)");
             args.add(beforActionParameter.getSimpleName().toString());
         }
+        if (beforStartActionParameter != null) {
+            routerStatement.append("\n.beforStartAction($N)");
+            args.add(beforStartActionParameter.getSimpleName().toString());
+        }
+        if (afterStartActionParameter != null) {
+            routerStatement.append("\n.afterStartAction($N)");
+            args.add(afterStartActionParameter.getSimpleName().toString());
+        }
         if (afterActionParameter != null) {
-            routerStatement.append("\n.afterJumpAction($N)");
+            routerStatement.append("\n.afterAction($N)");
             args.add(afterActionParameter.getSimpleName().toString());
         }
         if (afterErrorActionParameter != null) {

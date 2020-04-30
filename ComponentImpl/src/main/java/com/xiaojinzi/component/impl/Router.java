@@ -2,7 +2,8 @@ package com.xiaojinzi.component.impl;
 
 import android.app.Activity;
 import android.content.Context;
-import android.net.Uri;
+import android.os.Bundle;
+import android.support.annotation.AnyThread;
 import android.support.annotation.MainThread;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -10,11 +11,10 @@ import android.support.v4.app.Fragment;
 
 import com.xiaojinzi.component.Component;
 import com.xiaojinzi.component.ComponentUtil;
-import com.xiaojinzi.component.anno.support.CheckClassName;
-import com.xiaojinzi.component.cache.Cache;
-import com.xiaojinzi.component.cache.CacheType;
-import com.xiaojinzi.component.cache.DefaultCacheFactory;
+import com.xiaojinzi.component.anno.support.CheckClassNameAnno;
+import com.xiaojinzi.component.cache.ClassCache;
 import com.xiaojinzi.component.support.NavigationDisposable;
+import com.xiaojinzi.component.support.ProxyIntentAct;
 import com.xiaojinzi.component.support.Utils;
 
 import java.util.ArrayList;
@@ -32,9 +32,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * <p>
  * time   : 2018/07/26
  *
- * @author : xiaojinzi 30212
+ * @author : xiaojinzi
  */
-@CheckClassName
+@CheckClassNameAnno
 public class Router {
 
     protected Router() {
@@ -43,13 +43,7 @@ public class Router {
     /**
      * 类的标志
      */
-    public static final String TAG = "Router";
-
-    /**
-     * 拦截器 Class --> RouterInterceptor 的缓存
-     */
-    private static final Cache<Class, Object> apiClassCache =
-            DefaultCacheFactory.INSTANCE.build(CacheType.CLASS_CACHE);
+    public static final String TAG = "-------- Router --------";
 
     /**
      * 空实现,里头都是不能调用的方法
@@ -104,6 +98,13 @@ public class Router {
     }
 
     @NonNull
+    @AnyThread
+    public static ProxyIntentBuilder newProxyIntentBuilder() {
+        return new ProxyIntentBuilder();
+    }
+
+    @NonNull
+    @AnyThread
     public static FragmentNavigator with(@NonNull String fragmentFlag) {
         Utils.checkNullPointer(fragmentFlag, "fragmentFlag");
         return new FragmentNavigator(fragmentFlag);
@@ -121,16 +122,20 @@ public class Router {
      * @return 返回一个路由的 Builder
      */
     @NonNull
+    @AnyThread
     public static Navigator with() {
         return new Navigator();
     }
 
     @NonNull
+    @AnyThread
     public static Navigator with(@NonNull Context context) {
+        Utils.checkNullPointer(context, "context");
         return new Navigator(context);
     }
 
     @NonNull
+    @AnyThread
     public static Navigator with(@NonNull Fragment fragment) {
         return new Navigator(fragment);
     }
@@ -138,18 +143,19 @@ public class Router {
     /**
      * 拿到一个接口的实现类
      *
-     * @param apiClass
-     * @param <T>
-     * @return
+     * @param apiClass 路由接口 Api class
+     * @param <T>      路由接口 Api class 的实例对象
+     * @return 路由接口 Api class 的实例对象
      */
     @NonNull
+    @AnyThread
     public static <T> T withApi(@NonNull Class<T> apiClass) {
-        T t = (T) apiClassCache.get(apiClass);
+        T t = (T) ClassCache.get(apiClass);
         if (t == null) {
             String className = ComponentUtil.genRouterApiImplClassName(apiClass);
             try {
                 t = (T) Class.forName(className).newInstance();
-                apiClassCache.put(apiClass, t);
+                ClassCache.put(apiClass, t);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -157,8 +163,14 @@ public class Router {
         return t;
     }
 
-    public static boolean isMatchUri(@NonNull Uri uri) {
-        return RouterCenter.getInstance().isMatchUri(uri);
+    /**
+     * 是否有代理的 {@link android.content.Intent}
+     */
+    public static boolean isProxyIntentExist(@Nullable Bundle bundle) {
+        if (bundle == null) {
+            return false;
+        }
+        return bundle.getBoolean(ProxyIntentAct.EXTRA_ROUTER_PROXY_INTENT);
     }
 
     /**
@@ -168,6 +180,7 @@ public class Router {
      */
     @MainThread
     public static void cancel(@NonNull Activity act) {
+        Utils.checkMainThread();
         synchronized (mNavigationDisposableList) {
             for (int i = mNavigationDisposableList.size() - 1; i >= 0; i--) {
                 NavigationDisposable disposable = mNavigationDisposableList.get(i);
@@ -182,10 +195,11 @@ public class Router {
     /**
      * 取消一个 Fragment 的有关路由任务
      *
-     * @param fragment
+     * @param fragment {@link Fragment}
      */
     @MainThread
     public static void cancel(@NonNull Fragment fragment) {
+        Utils.checkMainThread();
         synchronized (mNavigationDisposableList) {
             for (int i = mNavigationDisposableList.size() - 1; i >= 0; i--) {
                 NavigationDisposable disposable = mNavigationDisposableList.get(i);

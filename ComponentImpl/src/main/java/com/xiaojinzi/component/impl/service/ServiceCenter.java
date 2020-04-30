@@ -5,7 +5,7 @@ import android.support.annotation.Nullable;
 
 import com.xiaojinzi.component.Component;
 import com.xiaojinzi.component.ComponentUtil;
-import com.xiaojinzi.component.anno.support.CheckClassName;
+import com.xiaojinzi.component.anno.support.CheckClassNameAnno;
 import com.xiaojinzi.component.service.IComponentCenterService;
 import com.xiaojinzi.component.service.IComponentHostService;
 import com.xiaojinzi.component.support.ASMUtil;
@@ -16,9 +16,9 @@ import java.util.Map;
 /**
  * 模块服务注册和卸载的总管
  *
- * @author xiaojinzi 30212
+ * @author xiaojinzi
  */
-@CheckClassName
+@CheckClassNameAnno
 public class ServiceCenter implements IComponentCenterService {
 
     private Map<String, IComponentHostService> moduleServiceMap = new HashMap<>();
@@ -75,7 +75,7 @@ public class ServiceCenter implements IComponentCenterService {
     @Nullable
     public IComponentHostService findModuleService(String host) {
         try {
-            if (Component.isInitOptimize()) {
+            if (Component.getConfig().isOptimizeInit()) {
                 return ASMUtil.findModuleServiceAsmImpl(host);
             } else {
                 Class<? extends IComponentHostService> clazz = null;

@@ -4,7 +4,7 @@ package com.xiaojinzi.base;
  * 组件化的业务组件配置中心
  * time   : 2018/11/27
  *
- * @author : xiaojinzi 30212
+ * @author : xiaojinzi
  */
 public class ModuleConfig {
 
@@ -65,6 +65,7 @@ public class ModuleConfig {
         public static final String TEST_INJECT3 = "testInject3";
         public static final String TEST_INJECT4 = "testInject4";
         public static final String TEST_PUT_QUERY_WITH_URL = "testPutQueryWithUrl";
+        public static final String TEST_FRAGMENT = "component1.fragment";
 
     }
 

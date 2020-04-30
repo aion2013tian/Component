@@ -16,12 +16,9 @@ public class InfoAct extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.info_act);
-
+        super.onCreate(savedInstanceState);setContentView(R.layout.info_act);
         String data = ParameterSupport.getString(getIntent(), "data");
         ((TextView) findViewById(R.id.tv)).setText(data);
-
     }
 
 }

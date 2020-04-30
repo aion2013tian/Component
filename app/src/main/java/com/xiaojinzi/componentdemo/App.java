@@ -1,49 +1,47 @@
 package com.xiaojinzi.componentdemo;
 
 import android.app.Application;
-import android.support.annotation.NonNull;
 
-import com.xiaojinzi.base.ModuleConfig;
+import com.google.gson.Gson;
 import com.xiaojinzi.component.Component;
+import com.xiaojinzi.component.Config;
 import com.xiaojinzi.component.impl.application.ModuleManager;
 import com.xiaojinzi.component.support.LogUtil;
 import com.xiaojinzi.component.support.RxErrorIgnoreUtil;
 
 public class App extends Application {
 
-    @NonNull
-    private static Application mApp;
-
-    @NonNull
-    public static Application getApp() {
-        return mApp;
-    }
-
     @Override
     public void onCreate() {
         super.onCreate();
 
-        mApp = this;
-
-        // 初始化组件化相关
-        Component.init(this, BuildConfig.DEBUG);
-        // 打开 Gradle 初始化优化开关
-        Component.openInitOptimize();
-        // 忽略一些不想处理的错误
-        RxErrorIgnoreUtil.ignoreError();
-
-
         long startTime = System.currentTimeMillis();
-        // 装载各个业务组件
-        ModuleManager.getInstance().registerArr(
-                ModuleConfig.App.NAME, ModuleConfig.Module1.NAME,
-                ModuleConfig.Module2.NAME, ModuleConfig.Help.NAME,
-                ModuleConfig.User.NAME, "base"
+        // 初始化组件化相关
+        Component.init(
+                BuildConfig.DEBUG,
+                Config.with(this)
+                        .defaultScheme("router")
+                        // 使用内置的路由重复检查的拦截器, 如果为 true,
+                        // 那么当两个相同的路由发生在指定的时间内后一个路由就会被拦截
+                        .useRouteRepeatCheckInterceptor(true)
+                        // 1000 是默认的, 表示相同路由拦截的时间间隔
+                        .routeRepeatCheckDuration(1000)
+                        // 是否打印日志提醒你哪些路由使用了 Application 为 Context 进行跳转
+                        .tipWhenUseApplication(true)
+                        // 开启启动优化, 必须配套使用 Gradle 插件
+                        .optimizeInit(true)
+                        // 自动加载所有模块
+                        .autoRegisterModule(true)
+                        .objectToJsonConverter(obj -> new Gson().toJson(obj))
+                        .build()
         );
-
         long endTime = System.currentTimeMillis();
 
-        LogUtil.log("Componnet", "---------------------------------耗时：" + (endTime - startTime));
+        LogUtil.log("---------------------------------耗时：" + (endTime - startTime));
+
+        // 如果你依赖了 rx 版本, 请加上这句配置. 忽略一些不想处理的错误
+        // 如果不是 rx 的版本, 请忽略
+        RxErrorIgnoreUtil.ignoreError();
 
         if (BuildConfig.DEBUG) {
             ModuleManager.getInstance().check();

@@ -12,6 +12,7 @@ import android.support.v4.app.FragmentActivity;
 
 import com.xiaojinzi.component.error.RouterRuntimeException;
 import com.xiaojinzi.component.support.LogUtil;
+import com.xiaojinzi.component.support.OnRouterCancel;
 import com.xiaojinzi.component.support.RouterRequestHelp;
 import com.xiaojinzi.component.support.Utils;
 
@@ -19,20 +20,21 @@ import com.xiaojinzi.component.support.Utils;
  * 路由的工具类,内部都是一些help方法
  * 路由的一个帮助类,基本上用于分发事件
  *
- * @author xiaojinzi 30212
+ * @author xiaojinzi
  */
 class RouterUtil {
+
+    private static final String TAG = Router.TAG;
 
     private RouterUtil() {
     }
 
     /**
      * 当请求对象构建出来以后调用的
-     *
-     * @param callback
      */
     @AnyThread
-    public static void cancelCallback(@Nullable final RouterRequest request, @Nullable final OnRouterCancel callback) {
+    public static void cancelCallback(@Nullable final RouterRequest request,
+                                      @Nullable final OnRouterCancel callback) {
         Utils.postActionToMainThreadAnyway(new Runnable() {
             @Override
             public void run() {
@@ -42,32 +44,29 @@ class RouterUtil {
         deliveryListener(null, null, request);
     }
 
-    /**
-     * @param callback
-     */
+
     @MainThread
     private static void cancelCallbackOnMainThread(@Nullable RouterRequest request,
                                                    @Nullable final OnRouterCancel callback) {
-        LogUtil.log(Router.TAG, "路由取消：" + request.uri.toString());
+        if (request == null) {
+            LogUtil.log(TAG, "route canceled, request is null!");
+        }else {
+            LogUtil.log(TAG, "route canceled：" + request.uri.toString());
+        }
         if (callback == null) {
             return;
         }
         callback.onCancel(request);
     }
 
-    /**
-     * 当请求对象构建出来以后调用的
-     *
-     * @param callback
-     * @param errorResult
-     */
     @AnyThread
     public static void errorCallback(@Nullable final Callback callback,
+                                     @Nullable final BiCallback biCallback,
                                      @NonNull final RouterErrorResult errorResult) {
         Utils.postActionToMainThreadAnyway(new Runnable() {
             @Override
             public void run() {
-                errorCallbackOnMainThread(callback, errorResult);
+                errorCallbackOnMainThread(callback, biCallback, errorResult);
             }
         });
         deliveryListener(null, errorResult, null);
@@ -75,12 +74,13 @@ class RouterUtil {
 
     @MainThread
     private static void errorCallbackOnMainThread(@Nullable final Callback callback,
+                                                  @Nullable final BiCallback biCallback,
                                                   @NonNull final RouterErrorResult errorResult) {
         Utils.checkNullPointer(errorResult, "errorResult");
         if (errorResult.getOriginalRequest() == null) {
-            LogUtil.log(Router.TAG, "路由失败：" + Utils.getRealThrowable(errorResult.getError()).getClass().getSimpleName() + ":" + Utils.getRealMessage(errorResult.getError()));
+            LogUtil.log(TAG, "route fail：routerRequest has not been created, errorClass is " + Utils.getRealThrowable(errorResult.getError()).getClass().getSimpleName() + ":" + Utils.getRealMessage(errorResult.getError()));
         } else {
-            LogUtil.log(Router.TAG, "路由失败：" + errorResult.getOriginalRequest().uri.toString() + " and errorClass is " + Utils.getRealThrowable(errorResult.getError()).getClass().getSimpleName() + ",errorMsg is '" + Utils.getRealMessage(errorResult.getError()) + "'");
+            LogUtil.log(TAG, "route fail：" + errorResult.getOriginalRequest().uri.toString() + " and errorClass is " + Utils.getRealThrowable(errorResult.getError()).getClass().getSimpleName() + ",errorMsg is '" + Utils.getRealMessage(errorResult.getError()) + "'");
         }
         // 如果发起了一个路由但是现在已经 GG 了, 那就不执行了回调了
         if (errorResult.getOriginalRequest() != null && isRequestUnavailabled(errorResult.getOriginalRequest())) {
@@ -89,7 +89,7 @@ class RouterUtil {
         // 执行 Request 中 的 errorCallback
         if (errorResult.getOriginalRequest() != null) {
             try {
-                RouterRequestHelp.executeAfterErrorCallback(errorResult.getOriginalRequest());
+                RouterRequestHelp.executeAfterErrorAction(errorResult.getOriginalRequest());
             } catch (Exception e) {
                 throw new RouterRuntimeException("afterErrorCallback or afterEventCallback can't throw any exception!", e);
             }
@@ -97,6 +97,9 @@ class RouterUtil {
         if (callback != null) {
             callback.onError(errorResult);
             callback.onEvent(null, errorResult);
+        }
+        if (biCallback != null) {
+            biCallback.onError(errorResult);
         }
     }
 
@@ -116,14 +119,14 @@ class RouterUtil {
     private static void successCallbackOnMainThread(@Nullable final Callback callback,
                                                     @NonNull final RouterResult result) {
         Utils.checkNullPointer(result, "result");
-        LogUtil.log(Router.TAG, "路由成功：" + result.getOriginalRequest().uri.toString());
-        // 如果请求的界面已经gg了
+        LogUtil.log(TAG, "route success：" + result.getOriginalRequest().uri.toString());
+        // 如果请求的界面已经 GG 了
         if (isRequestUnavailabled(result.getOriginalRequest())) {
             return;
         }
         // 执行 Request 中 的 afterCallback
         try {
-            RouterRequestHelp.executeAfterJumpCallback(result.getOriginalRequest());
+            RouterRequestHelp.executeAfterAction(result.getOriginalRequest());
         } catch (Exception e) {
             throw new RouterRuntimeException("afterJumpCallback or afterEventCallback can't throw any exception!", e);
         }
@@ -137,7 +140,7 @@ class RouterUtil {
     public static void deliveryListener(@Nullable final RouterResult successResult,
                                         @Nullable final RouterErrorResult errorResult,
                                         @Nullable final RouterRequest cancelRequest) {
-        Utils.postActionToMainThread(new Runnable() {
+        Utils.postActionToMainThreadAnyway(new Runnable() {
             @Override
             public void run() {
                 deliveryListenerOnMainThread(successResult, errorResult, cancelRequest);

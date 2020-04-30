@@ -2,12 +2,13 @@ package com.xiaojinzi.component.support;
 
 import android.app.Application;
 import android.content.Context;
+import android.support.annotation.MainThread;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
 import com.xiaojinzi.component.Component;
 import com.xiaojinzi.component.anno.RouterAnno;
-import com.xiaojinzi.component.anno.support.CheckClassName;
+import com.xiaojinzi.component.anno.support.CheckClassNameAnno;
 import com.xiaojinzi.component.cache.ClassCache;
 import com.xiaojinzi.component.error.CreateInterceptorException;
 import com.xiaojinzi.component.impl.RouterInterceptor;
@@ -25,9 +26,9 @@ import java.lang.reflect.InvocationTargetException;
  * <p>
  * time   : 2018/12/03
  *
- * @author : xiaojinzi 30212
+ * @author : xiaojinzi
  */
-@CheckClassName
+@CheckClassNameAnno
 public class RouterInterceptorCache {
 
     private RouterInterceptorCache() {
@@ -37,6 +38,7 @@ public class RouterInterceptorCache {
      * 内部做了缓存,如果缓存中没有就会反射创建拦截器对象
      */
     @Nullable
+    @MainThread
     public static synchronized RouterInterceptor getInterceptorByClass(@NonNull Class<? extends RouterInterceptor> tClass) {
         RouterInterceptor t = ClassCache.get(tClass);
         if (t != null) {

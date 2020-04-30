@@ -77,7 +77,6 @@ public class TestQualityAct extends BaseAct implements TestContext {
 
     @Override
     public void log(@NonNull String msg) {
-
     }
 
     private void testFailure() {
@@ -255,7 +254,7 @@ public class TestQualityAct extends BaseAct implements TestContext {
                 .path(ModuleConfig.Module1.TEST_AUTORETURN1)
                 .requestCodeRandom()
                 .putString("data", "crashOnAfterJumpAction")
-                .afterJumpAction(() -> {
+                .afterAction(() -> {
                     throw new NullPointerException("test exception on afterJumpAction");
                 })
                 .activityResultCall()
@@ -281,20 +280,6 @@ public class TestQualityAct extends BaseAct implements TestContext {
                 .with(mContext)
                 .host(ModuleConfig.Module1.NAME)
                 .path(ModuleConfig.Module1.TEST_AUTORETURN1)
-                .requestCodeRandom()
-                .putString("data", "crashOnAfterEventAction")
-                .afterEventAction(() -> {
-                    throw new NullPointerException("test exception on afterJumpAction");
-                })
-                .activityResultCall()
-                .subscribe();
-    }
-
-    public void testCrash4(View view) {
-        RxRouter
-                .with(mContext)
-                .host(ModuleConfig.App.NAME)
-                .path(ModuleConfig.App.NOT_FOUND_TEST)
                 .requestCodeRandom()
                 .putString("data", "crashOnAfterEventAction")
                 .afterEventAction(() -> {

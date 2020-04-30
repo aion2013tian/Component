@@ -2,15 +2,15 @@ package com.xiaojinzi.component.support;
 
 import android.support.annotation.NonNull;
 
-import com.xiaojinzi.component.anno.support.CheckClassName;
+import com.xiaojinzi.component.anno.support.CheckClassNameAnno;
 
 /**
  * 懒加载设计
  * time   : 2018/11/27
  *
- * @author : xiaojinzi 30212
+ * @author : xiaojinzi
  */
-@CheckClassName
+@CheckClassNameAnno
 public interface Callable<T> {
 
     /**

@@ -12,6 +12,8 @@ import android.widget.Button;
 import android.widget.Toast;
 
 import com.xiaojinzi.base.ModuleConfig;
+import com.xiaojinzi.component.Component;
+import com.xiaojinzi.component.anno.AttrValueAutowiredAnno;
 import com.xiaojinzi.component.anno.FragmentAnno;
 import com.xiaojinzi.component.impl.Router;
 import com.xiaojinzi.component.impl.RxRouter;
@@ -19,15 +21,20 @@ import com.xiaojinzi.component1.R;
 
 import io.reactivex.functions.Consumer;
 
-@FragmentAnno("component1.fragment")
+@FragmentAnno(value = "component1.fragment")
 public class Component1Fragment extends Fragment {
 
     private Button bt_go_component2;
     private Button bt_rx_get;
 
+    @AttrValueAutowiredAnno("age")
+    int age;
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+
+        Component.inject(this);
 
         View contentView = inflater.inflate(R.layout.component1_fragment, null);
         bt_go_component2 = contentView.findViewById(R.id.bt_go_component2);
@@ -38,7 +45,7 @@ public class Component1Fragment extends Fragment {
                 Router.with(Component1Fragment.this)
                         .host(ModuleConfig.Module2.NAME)
                         .path(ModuleConfig.Module2.MAIN)
-                        .navigate();
+                        .forward();
             }
         });
         bt_rx_get.setOnClickListener(new View.OnClickListener() {

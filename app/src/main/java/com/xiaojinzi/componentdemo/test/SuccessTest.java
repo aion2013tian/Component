@@ -86,7 +86,7 @@ public class SuccessTest implements TestExecutor {
                         .host(ModuleConfig.Module1.NAME)
                         .path(ModuleConfig.Module1.TEST_AUTORETURN)
                         .putString("data", "testNavigate")
-                        .navigate(new TestContext.CallbackSuccessIsSuccessful(emitter));
+                        .forward(new TestContext.CallbackSuccessIsSuccessful(emitter));
             }
         });
 
@@ -105,7 +105,7 @@ public class SuccessTest implements TestExecutor {
                         .host(ModuleConfig.Module1.NAME)
                         .path(ModuleConfig.Module1.TEST_AUTORETURN)
                         .putString("data", "testNavigatex")
-                        .navigate(new TestQualityAct.CallbackSuccessIsSuccessful(emitter));
+                        .forward(new TestQualityAct.CallbackSuccessIsSuccessful(emitter));
             }
         });
 
@@ -117,68 +117,41 @@ public class SuccessTest implements TestExecutor {
      * @return
      */
     public Completable testNavigatexx() {
-        return mTestContext.testWrap(new TestContext.TestBack() {
-            @Override
-            public void run(CompletableEmitter emitter) {
+        return mTestContext.testWrap(emitter ->
                 Router.with(mTestContext.dialog().getContext())
                         .host(ModuleConfig.Module1.NAME)
                         .path(ModuleConfig.Module1.TEST_AUTORETURN)
                         .putString("data", "testNavigatexx")
-                        .navigate(new TestQualityAct.CallbackSuccessIsSuccessful(emitter));
-            }
-        });
+                        .forward(new TestQualityAct.CallbackSuccessIsSuccessful(emitter))
+        );
 
     }
 
     public Completable rxTestNavigate() {
-        return mTestContext.testWrap(new TestContext.TestBack() {
-            @Override
-            public void run(CompletableEmitter emitter) {
-                RxRouter.with(mTestContext.context())
-                        .host(ModuleConfig.Module1.NAME)
-                        .path(ModuleConfig.Module1.TEST_AUTORETURN)
-                        .putString("data", "rxTestNavigate")
-                        .call()
-                        .subscribe(new Action() {
-                            @Override
-                            public void run() throws Exception {
-                                emitter.onComplete();
-                            }
-                        }, new Consumer<Throwable>() {
-                            @Override
-                            public void accept(Throwable throwable) throws Exception {
-                                emitter.onError(throwable);
-                            }
-                        });
-            }
-        });
-
+        return mTestContext.testWrap(emitter -> RxRouter.with(mTestContext.context())
+                .host(ModuleConfig.Module1.NAME)
+                .path(ModuleConfig.Module1.TEST_AUTORETURN)
+                .putString("data", "rxTestNavigate")
+                .call()
+                .subscribe(
+                        () -> emitter.onComplete(),
+                        throwable -> emitter.onError(throwable)
+                )
+        );
     }
 
     public Completable rxTestNavigatex() {
-        return mTestContext.testWrap(new TestContext.TestBack() {
-            @Override
-            public void run(CompletableEmitter emitter) {
-                RxRouter.with(mTestContext.fragment())
-                        .host(ModuleConfig.Module1.NAME)
-                        .path(ModuleConfig.Module1.TEST_AUTORETURN)
-                        .putString("data", "rxTestNavigatex")
-                        .call()
-                        .subscribeOn(Schedulers.io())
-                        .subscribe(new Action() {
-                            @Override
-                            public void run() throws Exception {
-                                emitter.onComplete();
-                            }
-                        }, new Consumer<Throwable>() {
-                            @Override
-                            public void accept(Throwable throwable) throws Exception {
-                                emitter.onError(throwable);
-                            }
-                        });
-            }
-        });
-
+        return mTestContext.testWrap(emitter -> RxRouter.with(mTestContext.fragment())
+                .host(ModuleConfig.Module1.NAME)
+                .path(ModuleConfig.Module1.TEST_AUTORETURN)
+                .putString("data", "rxTestNavigatex")
+                .call()
+                .subscribeOn(Schedulers.io())
+                .subscribe(
+                        () -> emitter.onComplete(),
+                        throwable -> emitter.onError(throwable)
+                )
+        );
     }
 
     /**
@@ -194,7 +167,7 @@ public class SuccessTest implements TestExecutor {
                         .host(ModuleConfig.Module1.NAME)
                         .path(ModuleConfig.Module1.TEST_AUTORETURN)
                         .putString("data", "testNavigateWithChildThread")
-                        .navigate(new TestQualityAct.CallbackSuccessIsSuccessful(emitter));
+                        .forward(new TestQualityAct.CallbackSuccessIsSuccessful(emitter));
             }
         });
 
@@ -213,7 +186,7 @@ public class SuccessTest implements TestExecutor {
                         .host(ModuleConfig.Module1.NAME)
                         .path(ModuleConfig.Module1.TEST_AUTORETURN)
                         .putString("data", "testNavigateWithChildThreadx")
-                        .navigate(new TestQualityAct.CallbackSuccessIsSuccessful(emitter));
+                        .forward(new TestQualityAct.CallbackSuccessIsSuccessful(emitter));
             }
         });
 
@@ -232,7 +205,7 @@ public class SuccessTest implements TestExecutor {
                         .host(ModuleConfig.Module1.NAME)
                         .path(ModuleConfig.Module1.TEST_AUTORETURN)
                         .putString("data", "testNavigateWithChildThreadxx")
-                        .navigate(new TestQualityAct.CallbackSuccessIsSuccessful(emitter));
+                        .forward(new TestQualityAct.CallbackSuccessIsSuccessful(emitter));
             }
         });
 
@@ -252,7 +225,7 @@ public class SuccessTest implements TestExecutor {
                         .path(ModuleConfig.Module1.TEST_AUTORETURN)
                         .requestCode(123)
                         .putString("data", "testGetActivityResult")
-                        .navigateForResult(new TestQualityAct.BiCallbackSuccessIsSuccessful(emitter));
+                        .forwardForResult(new TestQualityAct.BiCallbackSuccessIsSuccessful(emitter));
             }
         });
     }
@@ -271,7 +244,7 @@ public class SuccessTest implements TestExecutor {
                         .path(ModuleConfig.Module1.TEST_AUTORETURN)
                         .requestCode(123)
                         .putString("data", "testGetActivityResultx")
-                        .navigateForResult(new TestQualityAct.BiCallbackSuccessIsSuccessful(emitter));
+                        .forwardForResult(new TestQualityAct.BiCallbackSuccessIsSuccessful(emitter));
             }
         });
     }
@@ -290,7 +263,7 @@ public class SuccessTest implements TestExecutor {
                         .path(ModuleConfig.Module1.TEST_AUTORETURN)
                         .requestCode(123)
                         .putString("data", "testGetActivityResultxx")
-                        .navigateForResult(new TestQualityAct.BiCallbackSuccessIsSuccessful(emitter));
+                        .forwardForResult(new TestQualityAct.BiCallbackSuccessIsSuccessful(emitter));
             }
         });
     }
@@ -309,7 +282,7 @@ public class SuccessTest implements TestExecutor {
                         .path(ModuleConfig.Module1.TEST_AUTORETURN)
                         .requestCode(123)
                         .putString("data", "testGetActivityResultWithChildThread")
-                        .navigateForResult(new TestQualityAct.BiCallbackSuccessIsSuccessful(emitter));
+                        .forwardForResult(new TestQualityAct.BiCallbackSuccessIsSuccessful(emitter));
             }
         });
     }
@@ -328,7 +301,7 @@ public class SuccessTest implements TestExecutor {
                         .path(ModuleConfig.Module1.TEST_AUTORETURN)
                         .requestCode(123)
                         .putString("data", "testGetActivityResultWithChildThreadx")
-                        .navigateForResult(new TestQualityAct.BiCallbackSuccessIsSuccessful(emitter));
+                        .forwardForResult(new TestQualityAct.BiCallbackSuccessIsSuccessful(emitter));
             }
         });
     }
@@ -347,7 +320,7 @@ public class SuccessTest implements TestExecutor {
                         .path(ModuleConfig.Module1.TEST_AUTORETURN)
                         .requestCode(123)
                         .putString("data", "testGetActivityResultWithChildThreadxx")
-                        .navigateForResult(new TestQualityAct.BiCallbackSuccessIsSuccessful(emitter));
+                        .forwardForResult(new TestQualityAct.BiCallbackSuccessIsSuccessful(emitter));
             }
         });
     }
@@ -366,7 +339,7 @@ public class SuccessTest implements TestExecutor {
                         .path(ModuleConfig.Module1.TEST_AUTORETURN)
                         .requestCode(123)
                         .putString("data", "testGetIntent")
-                        .navigateForIntent(new TestQualityAct.BiCallbackSuccessIsSuccessful(emitter));
+                        .forwardForIntent(new TestQualityAct.BiCallbackSuccessIsSuccessful(emitter));
             }
         });
     }
@@ -387,7 +360,7 @@ public class SuccessTest implements TestExecutor {
                         .path(ModuleConfig.Module1.TEST_AUTORETURN)
                         .requestCode(123)
                         .putString("data", "testGetIntent1")
-                        .navigateForIntentAndResultCodeMatch(new TestQualityAct.BiCallbackSuccessIsSuccessful(emitter), Activity.RESULT_OK);
+                        .forwardForIntentAndResultCodeMatch(new TestQualityAct.BiCallbackSuccessIsSuccessful(emitter), Activity.RESULT_OK);
             }
         });
     }
@@ -401,7 +374,7 @@ public class SuccessTest implements TestExecutor {
                         .path(ModuleConfig.Module1.TEST_AUTORETURN)
                         .requestCode(123)
                         .putString("data", "testGetResultCode")
-                        .navigateForResultCode(new TestQualityAct.BiCallbackSuccessIsSuccessful(emitter));
+                        .forwardForResultCode(new TestQualityAct.BiCallbackSuccessIsSuccessful(emitter));
             }
         });
     }
@@ -415,7 +388,7 @@ public class SuccessTest implements TestExecutor {
                         .path(ModuleConfig.Module1.TEST_AUTORETURN)
                         .requestCode(123)
                         .putString("data", "testResultCodeMatch")
-                        .navigateForResultCodeMatch(new TestQualityAct.CallbackSuccessIsSuccessful(emitter), Activity.RESULT_OK);
+                        .forwardForResultCodeMatch(new TestQualityAct.CallbackSuccessIsSuccessful(emitter), Activity.RESULT_OK);
             }
         });
     }
@@ -455,10 +428,8 @@ public class SuccessTest implements TestExecutor {
     }
 
     private Completable testPassQuery() {
-        return mTestContext.testWrap(new TestContext.TestBack() {
-            @Override
-            public void run(CompletableEmitter emitter) {
-                RxRouter
+        return mTestContext.testWrap(
+                emitter -> RxRouter
                         .with(mTestContext.context())
                         .host(ModuleConfig.Module1.NAME)
                         .path(ModuleConfig.Module1.TEST_QUERY)
@@ -467,19 +438,29 @@ public class SuccessTest implements TestExecutor {
                         .query("isReturnAuto", true)
                         .requestCodeRandom()
                         .resultCodeMatchCall(Activity.RESULT_OK)
-                        .subscribe(new Action() {
-                            @Override
-                            public void run() throws Exception {
-                                emitter.onComplete();
-                            }
-                        }, new Consumer<Throwable>() {
-                            @Override
-                            public void accept(Throwable throwable) throws Exception {
-                                emitter.onError(throwable);
-                            }
-                        });
-            }
-        });
+                        .subscribe(
+                                () -> emitter.onComplete(),
+                                throwable -> emitter.onError(throwable)
+                        )
+        );
+    }
+
+    private Completable testPassQuery1() {
+        return mTestContext.testWrap(
+                emitter -> RxRouter
+                        .with(mTestContext.context())
+                        .host(ModuleConfig.Module1.NAME)
+                        .path(ModuleConfig.Module1.TEST_QUERY)
+                        .query("name", "testName")
+                        .query("pass", "testPass")
+                        .query("isReturnAuto", true)
+                        .requestCodeRandom()
+                        .resultCodeMatchCall(Activity.RESULT_OK)
+                        .subscribe(
+                                () -> emitter.onComplete(),
+                                throwable -> emitter.onError(throwable)
+                        )
+        );
     }
 
     private Completable testModifyByInterceptor() {
@@ -495,13 +476,14 @@ public class SuccessTest implements TestExecutor {
                     @Override
                     public void intercept(RouterInterceptor.Chain chain) throws Exception {
 
-                        android.support.v7.app.AlertDialog dialog = new android.support.v7.app.AlertDialog.Builder(chain.request().getRawActivity())
-                                .setMessage("如果您点击确定,传递过去的名称 'testName' 会被修改为 '我是被拦截器修改的 testName'")
-                                .setPositiveButton("确定", (dialog12, which) -> {
-                                })
-                                .setNegativeButton("取消", (dialog1, which) -> {
-                                })
-                                .create();
+                        android.support.v7.app.AlertDialog dialog =
+                                new android.support.v7.app.AlertDialog.Builder(chain.request().getRawOrTopActivity())
+                                        .setMessage("如果您点击确定,传递过去的名称 'testName' 会被修改为 '我是被拦截器修改的 testName'")
+                                        .setPositiveButton("确定", (dialog12, which) -> {
+                                        })
+                                        .setNegativeButton("取消", (dialog1, which) -> {
+                                        })
+                                        .create();
                         dialog.show();
 
                         Completable.complete()
@@ -583,7 +565,7 @@ public class SuccessTest implements TestExecutor {
                 Router.with(mContext)
                         .host(ModuleConfig.User.NAME)
                         .path(ModuleConfig.User.PERSON_CENTER_FOR_TEST)
-                        .navigate(new CallbackAdapter() {
+                        .forward(new CallbackAdapter() {
                             @Override
                             public void onSuccess(@NonNull RouterResult result) {
                                 super.onSuccess(result);

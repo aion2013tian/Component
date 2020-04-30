@@ -16,8 +16,6 @@ import com.xiaojinzi.component.anno.ServiceAnno;
 import com.xiaojinzi.component.impl.RouterRequest;
 import com.xiaojinzi.component.support.ParameterSupport;
 
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 
 /**
@@ -27,9 +25,6 @@ public class CustomerRouterImpl {
 
     /**
      * 自定义实现跳转到打电话的界面,并且自动完成打电话权限的申请
-     *
-     * @param request
-     * @return
      */
     @Nullable
     @RouterAnno(
@@ -37,7 +32,8 @@ public class CustomerRouterImpl {
             path = ModuleConfig.System.CALL_PHONE,
             interceptorNames = InterceptorConfig.HELP_CALLPHOEPERMISION
     )
-    public static Intent callPhoneIntent(@NonNull RouterRequest request) {
+    @NonNull
+    public static Intent callPhoneIntent(@NonNull RouterRequest request, @NonNull RouterRequest request1) {
         String tel = ParameterSupport.getString(request.bundle, "tel");
         if (TextUtils.isEmpty(tel)) {
             throw new NullPointerException("the tel is empty");
@@ -58,6 +54,7 @@ public class CustomerRouterImpl {
             path = ModuleConfig.System.TAKE_PHONE,
             interceptorNames = InterceptorConfig.HELP_CAMERAPERMISION
     )
+    @NonNull
     public static Intent takePictureIntent(@NonNull RouterRequest request) {
         Intent intent = new Intent();
         // 指定开启系统相机的Action
@@ -76,6 +73,7 @@ public class CustomerRouterImpl {
             host = ModuleConfig.System.NAME,
             path = ModuleConfig.System.SYSTEM_APP_DETAIL
     )
+    @NonNull
     public static Intent appDetail(@NonNull RouterRequest request) {
         Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
         intent.setData(Uri.parse("package:" + request.getRawContext().getPackageName()));
@@ -84,12 +82,11 @@ public class CustomerRouterImpl {
 
     @ServiceAnno(value = AnnoMethodService.class)
     public static AnnoMethodService getTestService() {
-        return (AnnoMethodService) Proxy.newProxyInstance(AnnoMethodService.class.getClassLoader(), new Class[]{AnnoMethodService.class}, new InvocationHandler() {
-            @Override
-            public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-                return "hello msg from proxy class";
-            }
-        });
+        return (AnnoMethodService) Proxy.newProxyInstance(
+                AnnoMethodService.class.getClassLoader(),
+                new Class[]{AnnoMethodService.class},
+                (proxy, method, args) -> "hello msg from proxy class"
+        );
     }
 
 }

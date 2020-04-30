@@ -8,6 +8,7 @@ import com.xiaojinzi.component.ComponentUtil;
 import com.xiaojinzi.component.application.IComponentCenterApplication;
 import com.xiaojinzi.component.application.IComponentHostApplication;
 import com.xiaojinzi.component.impl.RouterCenter;
+import com.xiaojinzi.component.impl.fragment.FragmentCenter;
 import com.xiaojinzi.component.impl.interceptor.InterceptorCenter;
 import com.xiaojinzi.component.support.ASMUtil;
 import com.xiaojinzi.component.support.LogUtil;
@@ -15,13 +16,14 @@ import com.xiaojinzi.component.support.Utils;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 
 /**
  * 这个类必须放在 {@link ComponentUtil#IMPL_OUTPUT_PKG} 包下面
  * 这是是管理每一个模块之前联系的管理类,加载模块的功能也是这个类负责的
  *
- * @author xiaojinzi 30212
+ * @author xiaojinzi
  */
 public class ModuleManager implements IComponentCenterApplication {
 
@@ -53,6 +55,9 @@ public class ModuleManager implements IComponentCenterApplication {
 
     @Override
     public void register(@NonNull IComponentHostApplication moduleApp) {
+        if (moduleApplicationMap.containsKey(moduleApp.getHost())) {
+            LogUtil.loge("The module \"" + moduleApp.getHost() + "\" is already registered");
+        }
         moduleApplicationMap.put(moduleApp.getHost(), moduleApp);
         moduleApp.onCreate(Component.getApplication());
     }
@@ -71,6 +76,20 @@ public class ModuleManager implements IComponentCenterApplication {
             LogUtil.log("模块 '" + host + "' 加载失败");
         } else {
             register(moduleApplication);
+        }
+    }
+
+    /**
+     * 自动注册, 需要开启 {@link com.xiaojinzi.component.Config.Builder#optimizeInit(boolean)}
+     * 表示使用 Gradle 插件优化初始化
+     */
+    public void autoRegister() {
+        if (!Component.getConfig().isOptimizeInit()) {
+            LogUtil.logw("you can't use this method to register module. Because you not turn on 'optimizeInit' by calling method 'Config.Builder.optimizeInit(true)' when you init");
+        }
+        List<String> moduleNames = ASMUtil.getModuleNames();
+        if (moduleNames != null && !moduleNames.isEmpty()) {
+            registerArr(moduleNames.toArray(new String[0]));
         }
     }
 
@@ -122,11 +141,11 @@ public class ModuleManager implements IComponentCenterApplication {
     @Nullable
     public static IComponentHostApplication findModuleApplication(@NonNull String host) {
         IComponentHostApplication result = null;
-        if (Component.isInitOptimize()) {
-            LogUtil.log("Componnet", host + " 采用字节码方式加载");
+        if (Component.getConfig().isOptimizeInit()) {
+            LogUtil.log("\"" + host + "\" will try to load by bytecode");
             result = ASMUtil.findModuleApplicationAsmImpl(host);
-        }else {
-            LogUtil.log("Componnet", host + " 采用反射加载");
+        } else {
+            LogUtil.log("\"" + host + "\" will try to load by reflection");
             if (result == null) {
                 try {
                     // 先找正常的
@@ -157,6 +176,8 @@ public class ModuleManager implements IComponentCenterApplication {
     public void check() {
         RouterCenter.getInstance().check();
         InterceptorCenter.getInstance().check();
+        FragmentCenter.getInstance().check();
+        // Service 不需要检查, 反正如果重复了就覆盖. 没得选
     }
 
 }
